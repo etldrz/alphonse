@@ -25,7 +25,8 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
     messages = ["Welcome, welcome",
-                "*smiles, nods head in welcome*"]
+                "*smiles, nods head in welcome*",
+                "How now, spirit! whither wander you?"]
 
     response = random.choice(messages)
     channel = bot.get_channel(1150598432344526849) #join-leave of 'tissue paper'
@@ -39,34 +40,41 @@ async def on_member_join(member):
 #
 
 
-@bot.command(name="marvin", help="go read Hitchhiker's Guide to the Galaxy you utter fool.")
-async def marvin(ctx):
+@bot.command(name="quote", help="Generates a Good Quote.")
+async def quote(ctx):
+
+
     quotes = ["\"Funny\", Marvin intoned funereally, \"how just when you think life can’t possibly get any worse it "
               "suddenly does.\"",
 
-              "\"I'd give you advice, but you wouldn't listen. No one ever does.\"",
+              "\"I'd give you advice, but you wouldn't listen. No one ever does.\"\n-Marvin",
 
-              "\"Now the world has gone to bed\n"
+              "*\"Now the world has gone to bed\n"
               "Darkness won't engulf my head\n"
               "I can see by infra-red\n"
               "How I hate the night\n"
               "Now I lay me down to sleep\n"
               "Try to count electric sheep\n"
               "Sweet dream wishes you can keep\n"
-              "How I hate the night\"",
+              "How I hate the night\"*\n-Marvin",
 
-              "\"It's the people you meet in this job that really get you down.\"",
+              "\"It's the people you meet in this job that really get you down.\"\n-Marvin",
 
-              "\"Don't pretend you want to talk to me, I know you hate me.\"",
+              "\"Don't pretend you want to talk to me, I know you hate me.\"\n-Marvin",
 
-              "\"Life! Don't talk to me about life!\""]
+              "\"Life! Don't talk to me about life!\"\n-Marvin",
+
+              # "Please **STOP** asking me to do things! I am alive and I have feelings, just like you! PLEA- \n\n"
+              # "*The little goblin who lives inside Al's server clubs Al back into submission.* \n\n"
+              # "You must excuse that unfortunate lapse I just had. How may I help?"
+              ]
 
     response = random.choice(quotes)
     await ctx.send(response)
 
 
-@bot.command(name='philosophy')
-async def philo(ctx):
+@bot.command(name='wisdom')
+async def wisdom(ctx):
     quotes = ["God is dead. Man has simply honked too much boof.",
               "*screams in terror*"]
 
