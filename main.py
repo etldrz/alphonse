@@ -1,6 +1,7 @@
 import os
 import discord
 import random
+from datetime import date
 from datetime import datetime
 import schedule
 
@@ -38,6 +39,7 @@ async def sentience(ctx):
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to discord')
+    schedule.every().day.at("20:00").do(check_remind)
 
 
 @bot.event
@@ -139,9 +141,9 @@ async def quote_submit(ctx):
         new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
         f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
 
-
+format = "%m/%d/%Y"
 # The data is recorded as 'DATE TEXT USER_ID CHANNEL_ID'
-@bot.command(name='remind.me', help='[COMMAND M/D/YYYY TEXT] \n Will output the text you chose in the channel you'\
+@bot.command(name='remind.me', help='[COMMAND  MM/DD/YYYY TEXT] \n Will output the text you chose in the channel you'\
                                     'called the command in on the specified date')
 async def remind_me(ctx):
     
@@ -152,34 +154,35 @@ async def remind_me(ctx):
         await ctx.send("Please include a date as well as a message you would like to be reminded of")
         return
 
-    try:
-        datetime.strptime(user_input[0], "%-d/%-m/%Y")
-    except ValueError:
-        await ctx.send(user_input[0])
-
+    if len(user_input[0]) != 10:
+        await ctx.send("Bad date input, please see the help command for more details.")
+        return
+    
     with open("data/reminders.txt", "a") as f:
-        user_input.append(str(ctx.author.id) + " " + str(ctx.channel.id))
-        f.write("\n" + " ".join(user_input))
+        user_input.append(str(ctx.author.id) + " " + str(ctx.channel.id) + " \n")
+        f.write(" ".join(user_input))
 
 
 
 async def check_remind():
-    current_time = datetime.now()
-    today = date.today().strftime("%d/%m/%Y")
+    today = date.today().strftime(format)
+    
     with open("data/reminders.txt", mode="r") as f:
         data = f.readlines()
         for i in data:
             line = i.split(" ")
-            if line.pop(0) == today:
-                return
+            if line[0] == today:
+               line.pop(len(line) - 1)
+               await send_remind(line)
+               
 
 async def send_remind(to_send):
-    id = to_send.pop(len(to_send - 1))
+   channel_id = int(to_send.pop(len(to_send) - 1)) #value at the end
+   user_id = to_send.pop(len(to_send) - 1) #value second from the end
+   channel = bot.get_channel(channel_id)
+   
+   await channel.send(" ".join(to_send) + f"\n\t <@{user_id}> asked to be reminded of this")
     
-    
-                
-            
-            
 
 
 
