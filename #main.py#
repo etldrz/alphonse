@@ -214,4 +214,12 @@ async def fencer_spotted(ctx):
 async def mood(ctx):
     await ctx.send(random.choice(ctx.guild.emojis))
 
+
+@bot.command(name='shit.list')
+async def shit_list(ctx):
+    if ctx.author.id != 414845930475356160:
+        return
+
+    
+
 bot.run(TOKEN)
