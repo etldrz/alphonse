@@ -1,0 +1,5 @@
+# .env
+DISCORD_TOKEN = MTE1MDUyMzMzNDA5NDc1MzgzMg.GWkHx_.dEFJpDD0HJEw-TcG83fqa2n71MuNWeaGpOk1lY
+DISCORD_GUILD = tissue paper
+SHEET_IDS = ["a", "b", "c"]
+PERSONAL_ID = 
