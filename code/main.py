@@ -1,23 +1,35 @@
 import os
 import discord
 import random
+import json
+import quickstart
 from datetime import date
 from datetime import datetime
-import schedule
-
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from dotenv import load_dotenv
 from discord.ext import commands
 
-intents = discord.Intents(messages=True, guilds=True, members=True,
-                          message_content=True)
+INTENTS = discord.Intents(messages=True, guilds=True, members=True,
+                          message_content=True, dm_messages=True)
+
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/drive.metadata',
+          'https://www.googleapis.com/auth/drive.file']
+drive = build('drive', 'v3', credentials=Credentials.from_authorized_user_file('token.json', SCOPES))
 
 load_dotenv()
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+PERSONAL_ID = int(os.getenv('PERSONAL_ID'))
+SHEET_IDS = json.loads(os.environ['SHEET_IDS'])
 
-bot = commands.Bot(command_prefix='!', intents=intents)
-
+bot = commands.Bot(command_prefix='!', intents=INTENTS)
 
 
 ## FIX ME
@@ -217,9 +229,49 @@ async def mood(ctx):
 
 @bot.command(name='shit.list')
 async def shit_list(ctx):
-    if ctx.author.id != 414845930475356160:
+    if ctx.author.id != PERSONAL_ID:
         return
 
+    curr_message = ctx.message.content.split(" ")
+    if len(curr_message) == 1:
+        return
+
+    person = None
+    for m in ctx.guild.members:
+        if m.nick != None and m.nick == curr_message[1]:
+            person = m
+        elif m.name == curr_message[1]:
+            person = m
+            
+            
+    dastardly_insults = ["*Stage whispers* \n You are a poo-poo pee-pee head",
+                        "*sneezes in your drink*",
+                        "*throws sand in your eyes*",
+                        "*Extends hand to shake yours, then slicks back hair at the last possible moment*"]
+    await person.send(random.choice(dastardly_insults))
     
+
+@bot.command(name='build')
+async def build(ctx):
+    if ctx.author.id != PERSONAL_ID:
+        return
+
+    title = str(datetime.now())
+    text = ctx.message.content.split(" ")
+    if len(text) > 1:
+        text.pop(0)
+        title = " ".join(text)
+    
+    file_metadata = {
+        'name': title,
+        'parents': ['1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC'],
+        'mimeType': 'application/vnd.google-apps.spreadsheet',
+        
+    }
+            
+    new_sheet = drive.files().create(body=file_metadata).execute()
+    await ctx.send(new_sheet)
+
+
 
 bot.run(TOKEN)

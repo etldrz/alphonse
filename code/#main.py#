@@ -1,28 +1,36 @@
 import os
 import discord
 import random
+import json
+import quickstart
 from datetime import date
 from datetime import datetime
-import json
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from dotenv import load_dotenv
 from discord.ext import commands
 
-intents = discord.Intents(messages=True, guilds=True, members=True,
+INTENTS = discord.Intents(messages=True, guilds=True, members=True,
                           message_content=True, dm_messages=True)
 
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/drive.metadata',
+          'https://www.googleapis.com/auth/drive.file']
+drive = build('drive', 'v3', credentials=Credentials.from_authorized_user_file('token.json', SCOPES))
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN') #token of the bot
-GUILD = os.getenv('DISCORD_GUILD') #token of the guild (currently 'tissue paper')
-SHEETS_ID = json.loads(os.environ['SHEETS_ID']) #list containing the ids of the sheets it has access to
 
+TOKEN = os.getenv('DISCORD_TOKEN')
+GUILD = os.getenv('DISCORD_GUILD')
+PERSONAL_ID = int(os.getenv('PERSONAL_ID'))
+SHEET_IDS = json.loads(os.environ['SHEET_IDS'])
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
-          'https://www.googleapis.com/auth/drive']
+bot = commands.Bot(command_prefix='!', intents=INTENTS)
 
-bot = commands.Bot(command_prefix='!', intents=intents)
 
 ## FIX ME
 async def sentience(ctx):
@@ -146,7 +154,6 @@ async def quote_submit(ctx):
         new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
         f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
 
-
 format = "%m/%d/%Y"
 # The data is recorded as 'DATE TEXT USER_ID CHANNEL_ID'
 @bot.command(name='remind.me', help='[COMMAND  MM/DD/YYYY TEXT] \n Will output the text you chose in the channel you'\
@@ -167,6 +174,7 @@ async def remind_me(ctx):
     with open("data/reminders.txt", "a") as f:
         user_input.append(str(ctx.author.id) + " " + str(ctx.channel.id) + " \n")
         f.write(" ".join(user_input))
+
 
 
 async def check_remind():
@@ -195,6 +203,8 @@ async def send_remind(to_send):
 # ego.te.absolvo
 
 
+
+
 # Will start a contest for fencer-spotted. Alphonse will log every picture and award a point to the picture taker.
 @bot.command(name='most.dangerous.game', help='Begins a contest for the channel fencer-spotted. Command input: time (hours)'\
              'the contest will run for.')
@@ -217,13 +227,9 @@ async def mood(ctx):
     await ctx.send(random.choice(ctx.guild.emojis))
 
 
-@bot.command(name='test')
-async def test(ctx):
-    await ctx.send("fuck you")
-
-@bot.command(name='shit.list', help=':(')
+@bot.command(name='shit.list')
 async def shit_list(ctx):
-    if ctx.author.id != 414845930475356160:
+    if ctx.author.id != PERSONAL_ID:
         return
 
     curr_message = ctx.message.content.split(" ")
@@ -244,54 +250,28 @@ async def shit_list(ctx):
                         "*Extends hand to shake yours, then slicks back hair at the last possible moment*"]
     await person.send(random.choice(dastardly_insults))
     
+
 @bot.command(name='build')
 async def build(ctx):
-    if ctx.auther.id != 414845930475356160:
+    if ctx.author.id != PERSONAL_ID:
         return
 
-    sheets = getapi()
-    if sheets is None:
-        await ctx.auther.send("Bad access to the Google API")
-        return
-
-
-
-
-#Taken from Google
-def getapi():
-    """Shows basic usage of the Sheets API.
-    Prints values from a sample spreadsheet.
-    """
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
-
-    try:
-        service = build('sheets', 'v4', credentials=creds)
-
-        # Call the Sheets API
-        sheet = service.spreadsheets()
-        return sheet
-    except HttpError as err:
-        print(err)
-        return None
-
+    title = str(datetime.now())
+    text = ctx.message.content.split(" ")
+    if len(text) > 1:
+        text.pop(0)
+        title = " ".join(text)
+    
+    file_metadata = {
+        'name': title,
+        'parents': ['1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC'],
+        'mimeType': 'application/vnd.google-apps.spreadsheet',
         
-    
+    }
+            
+    new_sheet = drive.files().create(body=file_metadata).execute()
+    await ctx.send("The file was created successfully.")
 
-    
+
+
 bot.run(TOKEN)

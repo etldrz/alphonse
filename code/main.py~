@@ -1,9 +1,9 @@
 import os
 import discord
 import random
+import json
 from datetime import date
 from datetime import datetime
-import json
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from dotenv import load_dotenv
@@ -12,17 +12,14 @@ from discord.ext import commands
 intents = discord.Intents(messages=True, guilds=True, members=True,
                           message_content=True, dm_messages=True)
 
-
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN') #token of the bot
-GUILD = os.getenv('DISCORD_GUILD') #token of the guild (currently 'tissue paper')
-SHEETS_ID = json.loads(os.environ['SHEETS_ID']) #list containing the ids of the sheets it has access to
 
-
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
-          'https://www.googleapis.com/auth/drive']
+TOKEN = os.getenv('DISCORD_TOKEN')
+GUILD = os.getenv('DISCORD_GUILD')
+SHEET_IDS = json.loads(os.environ['SHEET_IDS'])
 
 bot = commands.Bot(command_prefix='!', intents=intents)
+
 
 ## FIX ME
 async def sentience(ctx):
@@ -146,7 +143,6 @@ async def quote_submit(ctx):
         new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
         f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
 
-
 format = "%m/%d/%Y"
 # The data is recorded as 'DATE TEXT USER_ID CHANNEL_ID'
 @bot.command(name='remind.me', help='[COMMAND  MM/DD/YYYY TEXT] \n Will output the text you chose in the channel you'\
@@ -167,6 +163,7 @@ async def remind_me(ctx):
     with open("data/reminders.txt", "a") as f:
         user_input.append(str(ctx.author.id) + " " + str(ctx.channel.id) + " \n")
         f.write(" ".join(user_input))
+
 
 
 async def check_remind():
@@ -195,6 +192,8 @@ async def send_remind(to_send):
 # ego.te.absolvo
 
 
+
+
 # Will start a contest for fencer-spotted. Alphonse will log every picture and award a point to the picture taker.
 @bot.command(name='most.dangerous.game', help='Begins a contest for the channel fencer-spotted. Command input: time (hours)'\
              'the contest will run for.')
@@ -217,11 +216,7 @@ async def mood(ctx):
     await ctx.send(random.choice(ctx.guild.emojis))
 
 
-@bot.command(name='test')
-async def test(ctx):
-    await ctx.send("fuck you")
-
-@bot.command(name='shit.list', help=':(')
+@bot.command(name='shit.list')
 async def shit_list(ctx):
     if ctx.author.id != 414845930475356160:
         return
@@ -244,20 +239,7 @@ async def shit_list(ctx):
                         "*Extends hand to shake yours, then slicks back hair at the last possible moment*"]
     await person.send(random.choice(dastardly_insults))
     
-@bot.command(name='build')
-async def build(ctx):
-    if ctx.auther.id != 414845930475356160:
-        return
-
-    sheets = getapi()
-    if sheets is None:
-        await ctx.auther.send("Bad access to the Google API")
-        return
-
-
-
-
-#Taken from Google
+#Written by Google
 def getapi():
     """Shows basic usage of the Sheets API.
     Prints values from a sample spreadsheet.
@@ -282,16 +264,12 @@ def getapi():
 
     try:
         service = build('sheets', 'v4', credentials=creds)
-
-        # Call the Sheets API
         sheet = service.spreadsheets()
         return sheet
     except HttpError as err:
         print(err)
         return None
 
-        
-    
 
-    
+
 bot.run(TOKEN)
