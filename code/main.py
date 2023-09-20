@@ -2,13 +2,14 @@ import os
 import discord
 import random
 import json
-import quickstart
+import requests
 from datetime import date
 from datetime import datetime
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from dotenv import load_dotenv
 from discord.ext import commands
@@ -20,16 +21,29 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive',
           'https://www.googleapis.com/auth/drive.metadata',
           'https://www.googleapis.com/auth/drive.file']
-drive = build('drive', 'v3', credentials=Credentials.from_authorized_user_file('token.json', SCOPES))
+
+SERVICE_ACCOUNT_FILE = 'alphonse-key.json'
+
+credentials = service_account.Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+
+drive = build('drive', 'v3', credentials=credentials)
 
 load_dotenv()
-
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 PERSONAL_ID = int(os.getenv('PERSONAL_ID'))
-SHEET_IDS = json.loads(os.environ['SHEET_IDS'])
+
+
+
 
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
+
+
+affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
+
+
+
 
 
 ## FIX ME
@@ -135,15 +149,15 @@ async def wisdom(ctx):
     await ctx.send(response)
 
 
-@bot.command(name='source.code')
+@bot.command(name='source')
 async def source(ctx):
-    file = discord.File("images/GitHub_Invertocat.png", filename="Invertocat.png")
+    file = discord.File('GitHub_Invertocat.png', filename='GitHub_Invertocat.png')
     embed = discord.Embed()
     embed.url = "https://github.com/etldrz/alphonse"
     embed.title = "Alphonse's github"
     embed.description = "Contains the source code of Alphonse, as well as an in-depth description of all of his " \
                         "commands"
-    embed.set_image(url="attachment://Invertocat.png")
+    embed.set_image(url="attachment://GitHub_Invertocat.png")
 
     await ctx.send(file=file, embed=embed)
 
@@ -153,6 +167,8 @@ async def quote_submit(ctx):
     with open("data/newquote.txt", mode="a") as f:
         new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
         f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
+    await ctx.message.add_reaction(affirmation)
+
 
 format = "%m/%d/%Y"
 # The data is recorded as 'DATE TEXT USER_ID CHANNEL_ID'
@@ -174,6 +190,8 @@ async def remind_me(ctx):
     with open("data/reminders.txt", "a") as f:
         user_input.append(str(ctx.author.id) + " " + str(ctx.channel.id) + " \n")
         f.write(" ".join(user_input))
+
+    await ctx.message.add_reaction(affirmation)
 
 
 
@@ -197,14 +215,6 @@ async def send_remind(to_send):
    await channel.send(" ".join(to_send) + f"\n\t <@{user_id}> asked to be reminded of this")
     
 
-
-
-# shit.list
-# ego.te.absolvo
-
-
-
-
 # Will start a contest for fencer-spotted. Alphonse will log every picture and award a point to the picture taker.
 @bot.command(name='most.dangerous.game', help='Begins a contest for the channel fencer-spotted. Command input: time (hours)'\
              'the contest will run for.')
@@ -227,7 +237,7 @@ async def mood(ctx):
     await ctx.send(random.choice(ctx.guild.emojis))
 
 
-@bot.command(name='shit.list')
+@bot.command(name='shit.list', help=':(')
 async def shit_list(ctx):
     if ctx.author.id != PERSONAL_ID:
         return
@@ -249,6 +259,7 @@ async def shit_list(ctx):
                         "*throws sand in your eyes*",
                         "*Extends hand to shake yours, then slicks back hair at the last possible moment*"]
     await person.send(random.choice(dastardly_insults))
+    await ctx.message.add_reaction('U\1F4A9')
     
 
 @bot.command(name='build')
@@ -261,17 +272,48 @@ async def build(ctx):
     if len(text) > 1:
         text.pop(0)
         title = " ".join(text)
+
+    parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC'
     
+    sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
+
+    for file in sheet_list.get('files', []):
+        if file['name'] == title:
+            await ctx.send("The chosen filename is already in use. To check the list of files use the command "\
+                           "sheet.list, and to switch between files, use sheet.switch.")
+            return
+
+    
+
+
     file_metadata = {
         'name': title,
-        'parents': ['1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC'],
+        'parents': [parent],
         'mimeType': 'application/vnd.google-apps.spreadsheet',
-        
     }
             
     new_sheet = drive.files().create(body=file_metadata).execute()
-    await ctx.send(new_sheet)
+    
+    await ctx.send("The file was created successfully.")
 
 
 
+@bot.command(name='sheet.list')
+async def sheet_list(ctx):
+    parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC'
+    sheet_list = drive.files().list(q= f"'{parent}' in parents and trashed=False", orderBy='recency').execute()
+
+    message = "VTFC data sheets:\n"
+    for file in sheet_list.get('files', []):
+        message = message + f"- {file['name']}\n"
+
+
+    await ctx.send(message)
+
+
+@bot.command(name='sheet.delete')
+async def sheet_delete(ctx):
+    
+    await ctx.message.add_reaction(reaction)
+    
 bot.run(TOKEN)
