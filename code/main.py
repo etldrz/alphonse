@@ -34,14 +34,13 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 PERSONAL_ID = int(os.getenv('PERSONAL_ID'))
 
+parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC' #Parent file for Google Sheet related commands.
+
+affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
 
 
 
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
-
-
-affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
-
 
 
 
@@ -107,29 +106,6 @@ async def on_member_join(member):
 @bot.command(name="quote", help="Generates a Good Quote.")
 async def quote(ctx):
     quotes = [
-        # "\"Funny\", Marvin intoned funereally, \"how just when you think life can’t possibly get any worse it "
-        #           "suddenly does.\"",
-        #
-        #           "\"I'd give you advice, but you wouldn't listen. No one ever does.\"\n-Marvin",
-        #
-        #           "*\"Now the world has gone to bed\n"
-        #           "Darkness won't engulf my head\n"
-        #           "I can see by infra-red\n"
-        #           "How I hate the night\n"
-        #           "Now I lay me down to sleep\n"
-        #           "Try to count electric sheep\n"
-        #           "Sweet dream wishes you can keep\n"
-        #           "How I hate the night\"*\n-Marvin",
-        #
-        #           "\"It's the people you meet in this job that really get you down.\"\n-Marvin",
-        #
-        #           "\"Don't pretend you want to talk to me, I know you hate me.\"\n-Marvin",
-        #
-        #           "\"Life! Don't talk to me about life!\"\n-Marvin",
-        #
-        #           "Oh shit, it's Kratos!",
-        #
-        #           "\"I am completely, truly, absolutely 100\% sane. Trust me on this one.\n-Wonko the Sane, probably"
 
                     "Move me to a text file"
 
@@ -253,17 +229,28 @@ async def shit_list(ctx):
         elif m.name == curr_message[1]:
             person = m
             
-            
+    await ctx.send(ctx.message.content)        
     dastardly_insults = ["*Stage whispers* \n You are a poo-poo pee-pee head",
                         "*sneezes in your drink*",
                         "*throws sand in your eyes*",
                         "*Extends hand to shake yours, then slicks back hair at the last possible moment*"]
     await person.send(random.choice(dastardly_insults))
-    await ctx.message.add_reaction('U\1F4A9')
+
     
 
-@bot.command(name='build')
-async def build(ctx):
+
+def find(name):
+    sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
+
+    for file in sheet_list.get('files', []):
+        if file['name'] == name:
+            return file
+
+    return None
+
+
+@bot.command(name='sheet.build')
+async def sheet_build(ctx):
     if ctx.author.id != PERSONAL_ID:
         return
 
@@ -273,19 +260,12 @@ async def build(ctx):
         text.pop(0)
         title = " ".join(text)
 
-    parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC'
+    exists = find(title)
+    if exists != None:
+        await ctx.send("The specified filename already exists. Try using the command 'sheet.list'"\
+                       "or choosing a different name.")
+        return
     
-    sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
-
-    for file in sheet_list.get('files', []):
-        if file['name'] == title:
-            await ctx.send("The chosen filename is already in use. To check the list of files use the command "\
-                           "sheet.list, and to switch between files, use sheet.switch.")
-            return
-
-    
-
-
     file_metadata = {
         'name': title,
         'parents': [parent],
@@ -294,13 +274,11 @@ async def build(ctx):
             
     new_sheet = drive.files().create(body=file_metadata).execute()
     
-    await ctx.send("The file was created successfully.")
-
+    await ctx.message.add_reaction(affirmative)
 
 
 @bot.command(name='sheet.list')
 async def sheet_list(ctx):
-    parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC'
     sheet_list = drive.files().list(q= f"'{parent}' in parents and trashed=False", orderBy='recency').execute()
 
     message = "VTFC data sheets:\n"
@@ -313,7 +291,51 @@ async def sheet_list(ctx):
 
 @bot.command(name='sheet.delete')
 async def sheet_delete(ctx):
+    text = ctx.message.content.split(" ")
+    text.pop(0)
     
-    await ctx.message.add_reaction(reaction)
+    if len(text) == 1 or text[len(text) - 1].lower() != "confirm":
+        await ctx.send("Please specify a file to delete, and type 'confirm' at the end.")
+        return
+
+    text.pop(len(text) - 1)
+
+    exists = find(" ".join(text))
+    if exists == None:
+        await ctx.send("The file does not exist in the in-use directory.")
+        return
+
+    file_id = exists['id']
+
+    drive.files().delete(fileId=file_id).execute()
     
+    await ctx.message.add_reaction(affirmative)
+    
+
+@bot.command(name='sheet.get', help='gets a URL of the sheet in the parent'\
+             'folder corresponding to the name the user inputs.')
+async def sheet_get(ctx):
+    text = ctx.message.content.split(" ")
+    text.pop(0)
+
+    if len(text) == 0:
+        await ctx.send("Please specify a sheet whose URL you would like.")
+        return
+
+    exists = find(" ".join(text))
+    if exists == None:
+        await ctx.send("The specified file does not exist.")
+        return
+
+    spreadsheet_id = exists['id']
+
+    url = f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}'
+
+    embed = discord.Embed()
+    embed.url = url
+    embed.title = " ".join(text)
+
+    await ctx.send(embed=embed)
+
+
 bot.run(TOKEN)
