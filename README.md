@@ -16,7 +16,7 @@ Every command is prefecaed by '!'. Information on each command can be found insi
 
 mood will generate a randomly chosen emote from the list of emotes specific to the server the command is called on.
 
-### 'most.dangerous.game' (VTFC specific)
+### `most.dangerous.game` (VTFC specific)
 
 Runs a contest among all members in the server. Whenever someone posts an image into the 'fencer-spotted' channel, a point will be awarded to them. At the end of the contest, Alphonse will announce the winner of the contest.
 
