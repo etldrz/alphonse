@@ -127,13 +127,12 @@ async def wisdom(ctx):
 
 @bot.command(name='source')
 async def source(ctx):
-    file = discord.File('GitHub_Invertocat.png', filename='GitHub_Invertocat.png')
+    file = discord.File('alphonse.jpg', filename='alphonse.jpg')
     embed = discord.Embed()
     embed.url = "https://github.com/etldrz/alphonse"
     embed.title = "Alphonse's github"
-    embed.description = "Contains the source code of Alphonse, as well as an in-depth description of all of his " \
-                        "commands"
-    embed.set_image(url="attachment://GitHub_Invertocat.png")
+    embed.description = "Alphonse's GitHub and README"
+    embed.set_image(url="attachment://alphonse.jpg")
 
     await ctx.send(file=file, embed=embed)
 
@@ -208,7 +207,7 @@ async def fencer_spotted(ctx):
     channel = bot.get_channel(1150564971843965050) # mute-me of tissue paper
     
 
-@bot.command(name='mood')
+@bot.command(name='mood', help='Outputs a random emote from this server.')
 async def mood(ctx):
     await ctx.send(random.choice(ctx.guild.emojis))
 
@@ -229,7 +228,6 @@ async def shit_list(ctx):
         elif m.name == curr_message[1]:
             person = m
             
-    await ctx.send(ctx.message.content)        
     dastardly_insults = ["*Stage whispers* \n You are a poo-poo pee-pee head",
                         "*sneezes in your drink*",
                         "*throws sand in your eyes*",
@@ -332,10 +330,30 @@ async def sheet_get(ctx):
     url = f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}'
 
     embed = discord.Embed()
+    embed_image = discord.File('Google_Sheets_logo.png', filename='sheets_logo.png')
     embed.url = url
     embed.title = " ".join(text)
+    embed.description = "The current working spreadsheet."
+    embed.set_image(url='attachment://sheets_logo.png')
+    await ctx.send(embed=embed, file=embed_image)
 
-    await ctx.send(embed=embed)
+
+@bot.command(name='sheets.get.attendance')
+async def sheet_get_attendance(ctx):
+    text = ctx.message.content.split(" ")
+    text.pop(0)
+
+    if len(text) == 0:
+        await ctx.send("Please specify a sheet whose attendance data you would like.")
+        return
+
+    exists = find(" ".join(text))
+    if exists == None:
+        await ctx.send("The specified file does not exist.")
+        return
+
+    
+
 
 
 bot.run(TOKEN)
