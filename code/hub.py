@@ -3,41 +3,20 @@ import discord
 import random
 import json
 import requests
+import data.active_quotes
 from datetime import date
-from datetime import datetime
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google.oauth2 import service_account
-from google_auth_oauthlib.flow import InstalledAppFlow
 from dotenv import load_dotenv
 from discord.ext import commands
+
+import sheet
 
 INTENTS = discord.Intents(messages=True, guilds=True, members=True,
                           message_content=True, dm_messages=True)
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
-          'https://www.googleapis.com/auth/drive',
-          'https://www.googleapis.com/auth/drive.metadata',
-          'https://www.googleapis.com/auth/drive.file']
-
-SERVICE_ACCOUNT_FILE = 'alphonse-key.json'
-
-credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-
-drive = build('drive', 'v3', credentials=credentials)
-
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-PERSONAL_ID = int(os.getenv('PERSONAL_ID'))
-
-parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC' #Parent file for Google Sheet related commands.
-
-affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
-
+personal_id = int(os.getenv('PERSONAL_ID'))
 
 
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
@@ -61,6 +40,13 @@ async def sentience(ctx):
 
     if random.random() < 0.01:
         await ctx.send(i_am)
+
+
+# Fix me for HttpError
+async def dm_error(ctx, err):
+    user = bot.get_user(personal_id)
+    await user.send(f"The following command caused this error '{ctx.message.content}'",
+                    err)
 
 
 @bot.event
@@ -115,14 +101,19 @@ async def quote(ctx):
     response = random.choice(quotes)
     await ctx.send(response)
 
-## MERGE WITH QUOTE                            
+
 @bot.command(name='wisdom')
 async def wisdom(ctx):
-    quotes = ["God is dead. Man has simply honked too much boof.",
-              "*screams in terror*"]
-
-    response = random.choice(quotes)
+    response = random.choice(data.active_quotes.quotes)
     await ctx.send(response)
+
+
+@bot.command(name='quote.submit')
+async def quote_submit(ctx):
+    with open("data/newquote.txt", mode="a") as f:
+        new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
+        f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
+    await ctx.message.add_reaction(affirmative)
 
 
 @bot.command(name='source')
@@ -137,20 +128,14 @@ async def source(ctx):
     await ctx.send(file=file, embed=embed)
 
 
-@bot.command(name='quote.submit')
-async def quote_submit(ctx):
-    with open("data/newquote.txt", mode="a") as f:
-        new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
-        f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
-    await ctx.message.add_reaction(affirmation)
+
 
 
 format = "%m/%d/%Y"
 # The data is recorded as 'DATE TEXT USER_ID CHANNEL_ID'
-@bot.command(name='remind.me', help='[COMMAND  MM/DD/YYYY TEXT] \n Will output the text you chose in the channel you'\
+@bot.command(name='remind.me', help='[MM/DD/YYYY TEXT] \n Will output the text you chose in the channel you'\
                                     'called the command in on the specified date')
 async def remind_me(ctx):
-    
     user_input = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "").split(" ")
     del user_input[0]
 
@@ -166,7 +151,7 @@ async def remind_me(ctx):
         user_input.append(str(ctx.author.id) + " " + str(ctx.channel.id) + " \n")
         f.write(" ".join(user_input))
 
-    await ctx.message.add_reaction(affirmation)
+    await ctx.message.add_reaction(affirmative)
 
 
 
@@ -214,18 +199,19 @@ async def mood(ctx):
 
 @bot.command(name='shit.list', help=':(')
 async def shit_list(ctx):
-    if ctx.author.id != PERSONAL_ID:
+    if ctx.author.id != personal_id:
         return
 
-    curr_message = ctx.message.content.split(" ")
-    if len(curr_message) == 1:
+    text = ctx.message.content.split(" ")
+    if len(text) == 1:
         return
 
+    text.pop(0)
     person = None
     for m in ctx.guild.members:
-        if m.nick != None and m.nick == curr_message[1]:
+        if m.nick != None and m.nick == " ".join(text):
             person = m
-        elif m.name == curr_message[1]:
+        elif m.name == " ".join(text):
             person = m
             
     dastardly_insults = ["*Stage whispers* \n You are a poo-poo pee-pee head",
@@ -247,96 +233,81 @@ def find(name):
     return None
 
 
-@bot.command(name='sheet.build')
-async def sheet_build(ctx):
-    if ctx.author.id != PERSONAL_ID:
-        return
-
-    title = str(datetime.now())
-    text = ctx.message.content.split(" ")
-    if len(text) > 1:
-        text.pop(0)
-        title = " ".join(text)
-
-    exists = find(title)
-    if exists != None:
-        await ctx.send("The specified filename already exists. Try using the command 'sheet.list'"\
-                       "or choosing a different name.")
+@bot.command(name='sheet')
+async def sheet_switch(ctx):
+    if ctx.author.id != personal_id:
         return
     
-    file_metadata = {
-        'name': title,
-        'parents': [parent],
-        'mimeType': 'application/vnd.google-apps.spreadsheet',
-    }
-            
-    new_sheet = drive.files().create(body=file_metadata).execute()
-    
-    await ctx.message.add_reaction(affirmative)
-
-
-@bot.command(name='sheet.list')
-async def sheet_list(ctx):
-    sheet_list = drive.files().list(q= f"'{parent}' in parents and trashed=False", orderBy='recency').execute()
-
-    message = "VTFC data sheets:\n"
-    for file in sheet_list.get('files', []):
-        message = message + f"- {file['name']}\n"
-
-
-    await ctx.send(message)
-
-
-@bot.command(name='sheet.delete')
-async def sheet_delete(ctx):
     text = ctx.message.content.split(" ")
     text.pop(0)
-    
-    if len(text) == 1 or text[len(text) - 1].lower() != "confirm":
-        await ctx.send("Please specify a file to delete, and type 'confirm' at the end.")
-        return
-
-    text.pop(len(text) - 1)
-
-    exists = find(" ".join(text))
-    if exists == None:
-        await ctx.send("The file does not exist in the in-use directory.")
-        return
-
-    file_id = exists['id']
-
-    drive.files().delete(fileId=file_id).execute()
-    
-    await ctx.message.add_reaction(affirmative)
-    
-
-@bot.command(name='sheet.get', help='gets a URL of the sheet in the parent'\
-             'folder corresponding to the name the user inputs.')
-async def sheet_get(ctx):
-    text = ctx.message.content.split(" ")
-    text.pop(0)
-
     if len(text) == 0:
-        await ctx.send("Please specify a sheet whose URL you would like.")
+        await ctx.send("Bad command")
         return
 
-    exists = find(" ".join(text))
+    main_commands = ["build", "get", "set", "read", "delete"]
+
+    if text[0] not in main_commands:
+        await ctx.send("Bad command")
+        return
+    match text[0]:
+        case "build":
+            await sheet.SheetBuild().build(ctx, text)
+        case "get":
+            await sheet.SheetGet().eval_next(bot, ctx, text)
+        case "delete":
+            await sheet.SheetDelete().delete(ctx, text)
+        case "set":
+            await sheet.SheetSet().eval_next(ctx, text)
+        case _:
+            return
+
+
+
+async def armory_input(ctx, sheet_ids, is_init, text):
+    text.pop(0)
+
+    armory_id = sheet_ids.index(['title'] == "armory")
+    if armory_id == None:
+        await ctx.send("Bad build")
+        return
+
+    if is_init:
+        init_range = "A1:E1"
+        init_values = [
+            ["Date", "Foil count", "Sabre count", "Epee count", "total"]
+        ]
+
+        body = {
+            'values': init_values,
+            'properties': {
+                'sheetId': sheet_ids[armory_id]['sheetId']
+            }
+        }
+        try:
+            result = service.spreadsheets().values().update(
+                spreadsheetId=spreadshee_id, range=init_range,
+                valueInputOption='USEE_ENTERED', body=body
+            ).execute
+        except HttpError as err:
+            await ctx.sent("armory_input HttpError")
+
+        return
+
+async def sheet_set(ctx, text):
+    text.pop(0)
+    if len(text) == 0:
+        await ctx.send("Please specify a sheet that you would like to set as the current working sheet.")
+        return
+
+    poss_curr = " ".join(text)
+    exists = find(poss_curr)
     if exists == None:
-        await ctx.send("The specified file does not exist.")
+        await ctx.send("Please specify a prexisting sheet")
         return
-
-    spreadsheet_id = exists['id']
-
-    url = f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}'
-
-    embed = discord.Embed()
-    embed_image = discord.File('Google_Sheets_logo.png', filename='sheets_logo.png')
-    embed.url = url
-    embed.title = " ".join(text)
-    embed.description = "The current working spreadsheet."
-    embed.set_image(url='attachment://sheets_logo.png')
-    await ctx.send(embed=embed, file=embed_image)
-
+    
+    global curr_sheet
+    curr_sheet = poss_curr
+    await ctx.message.add_reaction(affirmative)
 
 @bot.command(name='sheets.get.attendance')
 async def sheet_get_attendance(ctx):
