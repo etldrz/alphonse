@@ -118,7 +118,7 @@ async def quote_submit(ctx):
 
 @bot.command(name='source')
 async def source(ctx):
-    file = discord.File('alphonse.jpg', filename='alphonse.jpg')
+    file = discord.File('data/images/alphonse.jpg', filename='alphonse.jpg')
     embed = discord.Embed()
     embed.url = "https://github.com/etldrz/alphonse"
     embed.title = "Alphonse's github"
@@ -253,7 +253,7 @@ async def sheet_switch(ctx):
         case "build":
             await sheet.SheetBuild().build(ctx, text)
         case "get":
-            await sheet.SheetGet().eval_next(bot, ctx, text)
+            await sheet.SheetGet().eval_next(ctx, text)
         case "delete":
             await sheet.SheetDelete().delete(ctx, text)
         case "set":

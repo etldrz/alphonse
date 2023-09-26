@@ -56,11 +56,11 @@ class SheetGet:
     FOR ATTENDANCE AND INVENTORY, THE SHEET NAME WILL BE SPECIFIED AT THE END.
     """
 
-    specific_sheet = [["attendance", "'a"], ["inventory", "'i"]]    
+    inventory_commands = ["inventory", "'i"]
+    attendance_commands = ["attendance", "'a"]
     data_formatting = [["recent", "'r"], ["plot", "'p"]]
     plot_types = ["pie", "bar"]
-    
-              
+                  
     async def eval_next(self, ctx, text):
         if len(text) == 0:
             await ctx.send("Please further speciffy what you want.")
@@ -70,10 +70,10 @@ class SheetGet:
         if text[0] == "list":
             await self.list(ctx)
             return
-        elif text[0] in inv_comms:
+        elif text[0] in self.inventory_commands:
             await self.inventory(ctx, text)
             return
-        elif text[0] in att_comms:
+        elif text[0] in self.attendance_commands:
             await self.attendance(ctx, text)
             return
         
@@ -95,7 +95,7 @@ class SheetGet:
         try:
             service = build('sheets', 'v4', credentials=credentials)
             result = service.spreadsheets().values().get(
-                spreadsheetId=spreadsheet_id, range="Attendance!A1:E" + pull_length
+                spreadsheetId=spreadsheet_id, range=pull_range
             ).execute()
 
         except HttpError as err:
@@ -108,23 +108,36 @@ class SheetGet:
 
 
     async def attendance(self, ctx, text):
+        text.pop(0)
+        if len(text) == 0:
+            await ctx.send("Without specification, curr will be accessed.")
+        
+        exists = find(" ".join(text))
+        if exists == None:
+            await ctx.send("Please specify an existing spreadsheet.")
+            return
+
+        spreadsheet_id = exists['id']
+    
         #ignoring recent and plot for now
 
         pull_length = 150
-        range = "Attendance!A1:E" + pull_length
+        range = "Attendance!A1:E" + str(pull_length)
         data = await self.get_data(ctx, spreadsheet_id, range)
         
         if len(data) == pull_length:
             await ctx.send("Please switch to a new sheet for future data, this one has too many rows.")
             pull_length = pull_length * 3
-            range = "Attendance!A1:E" + pull_length
+            range = "Attendance!A1:E" + str(pull_length)
             data = await self.get_data(ctx, spreadsheet_id, range)
         
         await ctx.send(data)
 
 
     async def list(self, ctx):
-        sheet_list = drive.files().list(q= f"'{parent}' in parents and trashed=False", orderBy='recency').execute()
+        sheet_list = drive.files().list(
+            q= f"'{parent}' in parents and trashed=False", orderBy='recency'
+        ).execute()
 
         message = "VTFC data sheets:\n"
 
@@ -208,42 +221,46 @@ class SheetSet:
         if len(text) == 0:
             await ctx.send("Bad command")
             return
+        
 
-        if len(text) != 6:
-            await ctx.send("Please specify the details for all three weapons in the format"\
-                           " [AMOUNT WEAPON_NAME]")
-            return
-
-         curr_date = None
-         if text[0] == "today":
-             curr_date = date.today()
+        curr_date = date.today() #for results sake
+        # if text[0] == "today":
+        #     curr_date = date.today()
 
         values = None
-        if all(map(isnumeric, text[1, 3, 5])):
-            values = map(int, text[1, 3, 5])
+        if all(map(isnumeric, text[0, 2, 4])):
+            values = map(int, text[0, 2, 4])
         else:
             await ctx.send("Please specify the data formatting as [AMOUNT WEAPON_NAME].")
-        
-        check = all(i in text[2, 4, 6] for w in ["epee", "foil", "sabre"])
 
-        if not check:
-            await ctx.send("Please specify the weapon names more better")
+        body = {
+            'values':[
+                text[0, 2, 4]   
+            ]
+        }
+
+        get = SheetGet.attendance(ctx, ["attendance", text[6:len(text) -1]])
+
+        range = "Attendance!A" + str(len(get) + 1) + ":E" + str(len(get) + 1)
+
+        exists = find(" ".join(text[6:len(text) - 1]))
+        if exists == None:
+            await ctx.send("Bad location specification")
             return
-        
-        
 
-
+        spreadsheet_id = exists['id']
+        service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id, body=body, range=range, valueInputOption="USER_ENTERED"
+        ).execute()
 
         async def inventory():
-        return
+            return
 
         
-
-
-
-    if not check:
+        if not check:
             await ctx.send("Please specify the weapons more better.")
             return
+
 
     async def curr():
         return
@@ -297,7 +314,7 @@ class SheetBuild:
         text.pop(0)
 
         if len(text) == 0 or text[0] != "fencing":
-            new_sheet = self.make_sheet(ctx, text)
+            new_sheet = await self.make_sheet(ctx, text)
             await ctx.message.add_reaction(affirmative)
             return
         elif text[0] == "fencing":
