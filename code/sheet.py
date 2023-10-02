@@ -39,7 +39,7 @@ def find(name):
     return None
 
 
-async def dm_error():
+async def dm_error(ctx):
     await ctx.send("uh oh")
 
 
@@ -58,7 +58,8 @@ class SheetGet:
 
     inventory_commands = ["inventory", "'i"]
     attendance_commands = ["attendance", "'a"]
-    data_formatting = [["recent", "'r"], ["plot", "'p"]]
+    as_text = ["cat"]
+    as_plot = ["plot", "'p"]
     plot_types = ["pie", "bar"]
                   
     async def eval_next(self, ctx, text):
@@ -103,16 +104,19 @@ class SheetGet:
             return
                 
         data = result.get('values', [])
-        await ctx.send(len(data)) #check to see if len(list) where list is a list containing list has dimension just equal to no. of lists.
         return data
 
 
     async def attendance(self, ctx, text):
         text.pop(0)
+        exists = None
         if len(text) == 0:
             await ctx.send("Without specification, curr will be accessed.")
-        
-        exists = find(" ".join(text))
+            exists = find(curr_sheet)
+        else:
+            exists = find(" ".join(text))
+
+            
         if exists == None:
             await ctx.send("Please specify an existing spreadsheet.")
             return
@@ -126,12 +130,19 @@ class SheetGet:
         data = await self.get_data(ctx, spreadsheet_id, range)
         
         if len(data) == pull_length:
-            await ctx.send("Please switch to a new sheet for future data, this one has too many rows.")
+            await ctx.send("Please switch to a new sheet for future data, this one has too many rows to be "\
+                           "a single semester of fencing.")
             pull_length = pull_length * 3
             range = "Attendance!A1:E" + str(pull_length)
             data = await self.get_data(ctx, spreadsheet_id, range)
+            if len(data) == pull_length:
+                await ctx.send("Data length is: " + pull_length + ". To be safe, this command will no longer be completed. "\
+                               "Consider using the get command to retrieve the sheet link.")
+                return
         
-        await ctx.send(data)
+        
+        return data
+
 
 
     async def list(self, ctx):
@@ -185,6 +196,14 @@ class SheetDelete:
 
 class SheetSet:
 
+    inventory_commands = ["inventory", "'i"]
+    attendance_commands = ["attendance", "'a"]
+    epee = ["epee", "'e"]
+    foil = ["foil", "'f"]
+    sabre = ["sabre", "saber", "'s"]
+    attendance_sheet_order = ["date", "foil", "sabre", "epee"]
+    
+
     async def eval_next(self, ctx, text):
         text.pop(0)
 
@@ -195,26 +214,15 @@ class SheetSet:
         if text[0] == "curr":
             await self.curr(ctx, text)
             return
-        elif text[0] == "value":
-            await self.value(ctx, text)
-            return
-        await ctx.send("Bad command")
-    
-
-    async def value(self, ctx, text):
-        text.pop(0)
-        if len(text) == 0:
-            await ctx.send("Bad command")
-            return
-
-        if text[0] == "attendance" or text[0] == "'a":
+        elif text[0] in self.attendance_commands:
             await self.attendance(ctx, text)
             return
-        elif text[0] == "inventory" or text[0] == "'i":
+        elif text[0] in self.inventory_commands:
             await self.inventory(ctx, text)
             return
-        await ctx.send("Bad command")
 
+        await ctx.send("Bad command")
+    
 
     async def attendance(self, ctx, text):
         text.pop(0)
@@ -223,89 +231,92 @@ class SheetSet:
             return
         
 
-        curr_date = date.today() #for results sake
+        curr_date = str(date.today()) #for results sake
         # if text[0] == "today":
         #     curr_date = date.today()
 
-        values = None
-        if all(map(isnumeric, text[0, 2, 4])):
-            values = map(int, text[0, 2, 4])
-        else:
-            await ctx.send("Please specify the data formatting as [AMOUNT WEAPON_NAME].")
+        for v in [0, 2, 4]:
+            if text[v].isnumeric():
+                text[v] = int(text[v])
+            else:
+                await ctx.send("Bad numeric input. Check to see that the format you used is"\
+                               " [COUNT WEAPON_NAME]")
+                return
+
+        write_data = [curr_date, 0, 0, 0, 0]
+        
+        duplicate = "You used the same weapon name two or more times. Bad command."
+
+
+        for w in [1, 3, 5]:
+            if text[w] in self.epee:
+                
+                if write_data[3] != 0:
+                    await ctx.send(duplicate)
+                    return
+
+                write_data[3] = text[w - 1]
+            elif text[w] in self.sabre:
+                                
+                if write_data[2] != 0:
+                    await ctx.send(duplicate)
+
+                write_data[2] = text[w - 1]
+            elif text[w] in self.foil:
+                                
+                if write_data[1] != 0:
+                    await ctx.send(duplicate)
+                    return
+
+                write_data[1] = text[w - 1]
+            else:
+                await ctx.send("Bad weapon entry. Check to see that you spelled everything correctly"\
+                               " and that you put it in the order of [COUNT WEAPON_NAME]")
+                return
+                
+        del text[0:6]
+
+        text.insert(0, "'a")
+
+        get = await SheetGet().attendance(ctx, text)
+
+        range = "Attendance!A" + str(len(get) + 1) + ":E" + str(len(get) + 1)
+                        
+        exists = find(" ".join(text)) ## If at the front: more efficient
+        if exists == None:
+            await ctx.send("Bad data location")
+            return
+        
+        write_data[-1] = sum(write_data[1:4])
 
         body = {
-            'values':[
-                text[0, 2, 4]   
+            'values': [
+                write_data
             ]
         }
 
-        get = SheetGet.attendance(ctx, ["attendance", text[6:len(text) -1]])
-
-        range = "Attendance!A" + str(len(get) + 1) + ":E" + str(len(get) + 1)
-
-        exists = find(" ".join(text[6:len(text) - 1]))
-        if exists == None:
-            await ctx.send("Bad location specification")
-            return
-
         spreadsheet_id = exists['id']
-        service.spreadsheets().values().get(
-            spreadsheetId=spreadsheet_id, body=body, range=range, valueInputOption="USER_ENTERED"
-        ).execute()
 
-        async def inventory():
-            return
+        try:
+            service = build('sheets', 'v4', credentials=credentials)
+            service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id, body=body, range=range, valueInputOption="USER_ENTERED"
+            ).execute()
+            await ctx.message.add_reaction(affirmative)
+        except HttpError as err:
+            await dm_error(ctx)
+            
 
-        
-        if not check:
-            await ctx.send("Please specify the weapons more better.")
-            return
 
+
+    async def inventory():
+        return
+
+    
+    
 
     async def curr():
         return
-
-
-class SheetRead: #DEFcunt
-    
-    async def eval_next(self, ctx, text):
-
-        
-
-        """
-        ADD FUNCTIONALITY FOR PLOTTING AND CAT (PROBABLY SET UP FOR RECENT ONLY).
-        MAKE IT SO THAT THE FUNCTIONS THAT PULL DATA DO IT THE SAME NO MATTER WHAT,
-        IT'S JUST THE FUNCTIONS FOR PLOTTING AND CATTING THAT ALTER IT.
-        """
-
-        text.pop(0)
-        if len(text) == 0:
-            await ctx.send("Please further specify commands")
-            return
-
-        if text[0] == "curr":
-            await self.curr(ctx, text)
-            return
-        elif text[0] == "attendance" or text[0] == "'a":
-            await self.armory(ctx, text)
-            return
-        elif text[0] == "inventory" or text[0] == "'i":
-            await self.inventory(ctx, text)
-            return
-
-        data = text.pop(len(text) - 1)
-        exists = None
-        if end == "attendance" or end == "'a" or end == "inventory" or end == "'i":
-            exists = find(" ".join(text))
-
-        if exists == None:
-            await ctx.send("Bad sheet name specification")
-            return
-
-        await self.specific(ctx, exists, data)
-
-
-        
 
 
 class SheetBuild:
@@ -320,7 +331,7 @@ class SheetBuild:
         elif text[0] == "fencing":
             text.pop(0)
             new_sheet = await self.make_sheet(ctx, text)
-            await self.build_fencing(ctx, new_sheet)
+            await self.configure_fencing(ctx, new_sheet)
             return
 
 
@@ -352,7 +363,7 @@ class SheetBuild:
             return
 
 
-    async def build_fencing(self, ctx, new_sheet):
+    async def configure_fencing(self, ctx, new_sheet):
         spreadsheet_id = new_sheet['id']
         
         init_range_att = "Attendance!A1:E1"
@@ -379,12 +390,14 @@ class SheetBuild:
                 }
             }]
         }
-        
-        service = build('sheets', 'v4', credentials=credentials)
+        try:
+            service = build('sheets', 'v4', credentials=credentials)
 
-        service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body_init).execute()
-        response = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-        sheet_ids = response.get('sheets', '')
+            service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body_init).execute()
+            response = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+            sheet_ids = response.get('sheets', '')
+        except HttpError as err:
+            await dm_error(ctx)
         
         body_att = {
             'values':[
@@ -397,13 +410,15 @@ class SheetBuild:
                 init_values_inv
             ]
         }
-        
-        service.spreadsheets().values().update(
-            spreadsheetId=spreadsheet_id, range=init_range_att, body=body_att, valueInputOption='USER_ENTERED'
-        ).execute()
-        service.spreadsheets().values().update(
-            spreadsheetId=spreadsheet_id, range=init_range_inv, body=body_inv, valueInputOption='USER_ENTERED'
-        ).execute()
+        try:
+            service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id, range=init_range_att, body=body_att, valueInputOption='USER_ENTERED'
+            ).execute()
+            service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id, range=init_range_inv, body=body_inv, valueInputOption='USER_ENTERED'
+            ).execute()
+        except HttpError as err:
+            await dm_error(ctx)
 
         await ctx.message.add_reaction(affirmative)
 

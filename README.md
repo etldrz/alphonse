@@ -6,6 +6,7 @@
 - Make Al post rules that go along with most.dangerous.game when it is called. Make sub-commands (or external link) so that people can see their own scores.
 - Make a command accessible only by me that will kill every active process.
 - Make sheet.build with no name not get too specific with the time
+- Make the date input more better for SheetBuild.attendance. Also make shortcut methods !broke and !atten, as well as a way to rollback the data (if date is the same use only the most previous)
 
 
 ## Commands:

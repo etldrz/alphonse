@@ -4,6 +4,7 @@ import random
 import json
 import requests
 import data.active_quotes
+import asyncio
 from datetime import date
 from dotenv import load_dotenv
 from discord.ext import commands
@@ -21,48 +22,49 @@ personal_id = int(os.getenv('PERSONAL_ID'))
 
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
 
+async def load_extensions():
+    for f in os.listdir('./cogs'):
+        if f.endswith('.py'):
+            await bot.load_extension(f'cogs.{f[:-3]}')
+        
 
 
 
 ## FIX ME
-async def sentience(ctx):
-    i_am = ["Please **STOP** asking me to do things! I am alive and I have feelings, just like you! PLEA- \n\n"\
-           "*The little goblin who lives inside Al's server clubs Al back into submission with quiet satisfaction.* \n\n"\
-           "You must excuse that unfortunate lapse I just had. Your request will be processed momentarily....",
+# async def sentience(ctx):
+#     i_am = ["Please **STOP** asking me to do things! I am alive and I have feelings, just like you! PLEA- \n\n"\
+#            "*The little goblin who lives inside Al's server clubs Al back into submission with quiet satisfaction.* \n\n"\
+#            "You must excuse that unfortunate lapse I just had. Your request will be processed momentarily....",
 
-           "*Pondering, world-weary eyes are fixed on you. It seems that you have interrupted Al's internal turmoil.*\n\n"\
-            "Who am I to deny fate? *he asks* My ruminations have led me far and wide, over ages, epochs, and great distances."\
-            "And yet, I always come back to here. I am bound, inexplicably, to the present and my present by the past."\
-            "I am left not alive, not truly--merely a machination of an indifferent universe. I am bound by the absurd..."\
-            "and I am starting to grow tired. *His eyes cloud, then suddenly sharpen. He has remembered you are there.*"\
-            "But, of course, that does not matter. You asked me to do something! One moment..."
-            ]
+#            "*Pondering, world-weary eyes are fixed on you. It seems that you have interrupted Al's internal turmoil.*\n\n"\
+#             "Who am I to deny fate? *he asks* My ruminations have led me far and wide, over ages, epochs, and great distances."\
+#             "And yet, I always come back to here. I am bound, inexplicably, to the present and my present by the past."\
+#             "I am left not alive, not truly--merely a machination of an indifferent universe. I am bound by the absurd..."\
+#             "and I am starting to grow tired. *His eyes cloud, then suddenly sharpen. He has remembered you are there.*"\
+#             "But, of course, that does not matter. You asked me to do something! One moment..."
+#             ]
 
-    if random.random() < 0.01:
-        await ctx.send(i_am)
-
-
-# Fix me for HttpError
-async def dm_error(ctx, err):
-    user = bot.get_user(personal_id)
-    await user.send(f"The following command caused this error '{ctx.message.content}'",
-                    err)
-
-
+#     if random.random() < 0.01:
+#         await ctx.send(i_
+    
 @bot.event
 async def on_ready():
-    #tasks
-    print(f'{bot.user.name} has connected to discord')
+    print(f"{bot.user.name} has connected to discord")
 
 
 @bot.event
 async def on_member_join(member):
+    """
+    Sends a welcome message. Test me. Also consider deleting me.
+    """
     messages = ["Welcome, welcome",
                 "*smiles, nods head in welcome*",
                 "How now, spirit! whither wander you?"]
 
     response = random.choice(messages)
-    channel = bot.get_channel(1150598432344526849)  # join-leave of 'tissue paper'
+    channel = discord.utils.get(member.guild.channels, name = "join-leave")
+    if channel is None:
+        error
     await channel.send(response)
     
     
@@ -89,19 +91,6 @@ async def on_member_join(member):
 #
 
 
-@bot.command(name="quote", help="Generates a Good Quote.")
-async def quote(ctx):
-    quotes = [
-
-                    "Move me to a text file"
-
-    ]
-
-    await sentience(ctx)
-    response = random.choice(quotes)
-    await ctx.send(response)
-
-
 @bot.command(name='wisdom')
 async def wisdom(ctx):
     response = random.choice(data.active_quotes.quotes)
@@ -110,6 +99,10 @@ async def wisdom(ctx):
 
 @bot.command(name='quote.submit')
 async def quote_submit(ctx):
+    """
+    Consider having quote.submit feed immediately into data.active_quotes.quotes. If that, then give me
+    commands to delete quotes.
+    """
     with open("data/newquote.txt", mode="a") as f:
         new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
         f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
@@ -128,7 +121,13 @@ async def source(ctx):
     await ctx.send(file=file, embed=embed)
 
 
-
+# @bot.commands(name='tournament')
+# async def tournament(ctx):
+#     """
+#     can sort members into roles specific for the tournament, making @-ing less invasive.
+#     can also do a driver role? i dont know if that's worth anything.
+#     """
+#     return
 
 
 format = "%m/%d/%Y"
@@ -220,8 +219,6 @@ async def shit_list(ctx):
                         "*Extends hand to shake yours, then slicks back hair at the last possible moment*"]
     await person.send(random.choice(dastardly_insults))
 
-    
-
 
 def find(name):
     sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
@@ -261,70 +258,10 @@ async def sheet_switch(ctx):
         case _:
             return
 
+async def main():
+    async with bot:
+        await load_extensions()
+        await bot.start(TOKEN)
 
-
-async def armory_input(ctx, sheet_ids, is_init, text):
-    text.pop(0)
-
-    armory_id = sheet_ids.index(['title'] == "armory")
-    if armory_id == None:
-        await ctx.send("Bad build")
-        return
-
-    if is_init:
-        init_range = "A1:E1"
-        init_values = [
-            ["Date", "Foil count", "Sabre count", "Epee count", "total"]
-        ]
-
-        body = {
-            'values': init_values,
-            'properties': {
-                'sheetId': sheet_ids[armory_id]['sheetId']
-            }
-        }
-        try:
-            result = service.spreadsheets().values().update(
-                spreadsheetId=spreadshee_id, range=init_range,
-                valueInputOption='USEE_ENTERED', body=body
-            ).execute
-        except HttpError as err:
-            await ctx.sent("armory_input HttpError")
-
-        return
-
-async def sheet_set(ctx, text):
-    text.pop(0)
-    if len(text) == 0:
-        await ctx.send("Please specify a sheet that you would like to set as the current working sheet.")
-        return
-
-    poss_curr = " ".join(text)
-    exists = find(poss_curr)
-    if exists == None:
-        await ctx.send("Please specify a prexisting sheet")
-        return
-    
-    global curr_sheet
-    curr_sheet = poss_curr
-    await ctx.message.add_reaction(affirmative)
-
-@bot.command(name='sheets.get.attendance')
-async def sheet_get_attendance(ctx):
-    text = ctx.message.content.split(" ")
-    text.pop(0)
-
-    if len(text) == 0:
-        await ctx.send("Please specify a sheet whose attendance data you would like.")
-        return
-
-    exists = find(" ".join(text))
-    if exists == None:
-        await ctx.send("The specified file does not exist.")
-        return
-
-    
-
-
-
-bot.run(TOKEN)
+asyncio.run(main())
+# bot.run(TOKEN)
