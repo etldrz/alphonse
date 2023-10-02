@@ -258,10 +258,25 @@ async def sheet_switch(ctx):
         case _:
             return
 
+
+@bot.command(name='test')
+async def test(ctx):
+    channel = bot.get_channel(1153007466297172129)
+    count = 0
+    async for message in channel.history(limit=100):
+        if len(message.attachments) > 0:
+            for attachment in message.attachments:
+                if attachment.content_type.split("/")[0] == "image":
+                    await ctx.send("woah")
+            count += 1
+    if count == 0:
+        await ctx.send("fuck")
+
 async def main():
     async with bot:
         await load_extensions()
         await bot.start(TOKEN)
+bot.setup_hook = load_extensions
+bot.run(TOKEN)
 
-asyncio.run(main())
-# bot.run(TOKEN)
+# asyncio.run(main())
