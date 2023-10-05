@@ -4,31 +4,46 @@ from discord.ext import commands
 from discord.ext import tasks
 
 class MostDangerousGame(commands.Cog):
+    
 
     def __init__(self, bot):
         self.bot = bot
         self.already_running = False
         self.time = 48
+        self.scoreboard = dict()
+
+    def add_point(self, user_id):
+        curr_keys = self.scoreboard.keys()
+        for k in curr_keys:
+            if user_id == k:
+                self.scoreboard[k] += 1
+                return
+        self.scoreboard[user_id] = 1
+
+    
+    # def order_points(self):
+    #     #
+
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        channel_id = 1153007466297172129
+        channel_id = 1153007466297172129 #lackluster-bluster
         channel = self.bot.get_channel(channel_id)
         
-        if not self.already_running or message.channel.id != channel_id: #lackluster-bluster
+        if not self.already_running or message.channel.id != channel_id or message.author.id == self.bot.user.id:
             return
 
         if len(message.attachments) > 0:
             for attachment in message.attachments:
                 if attachment.content_type.split("/")[0] == "image":
-                    await channel.send("woo doggy")
-        
+                    self.add_point(message.author.id)
+                    await channel.send("gottem")
 
 
     @commands.command()
     async def midge(self, ctx):
         """
-        Will coerce floats into int.
+        Coerces inputted floats into int.
         """
         
         text = ctx.message.content.split(" ")
@@ -44,18 +59,6 @@ class MostDangerousGame(commands.Cog):
         if len(text) > 0 and text[0].isnumeric():
             time = int(text[0])
 
-
-    @tasks.loop(seconds=10, count=1)
-    async def testing(self):
-        print("zzzzzzz")
-
-    @testing.after_loop
-    async def after(self):
-        await ctx.send("All done.")
-           
-
-
-            
 
 async def setup(bot):
     await bot.add_cog(MostDangerousGame(bot))

@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 from datetime import date
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -41,6 +42,61 @@ def find(name):
 
 async def dm_error(ctx):
     await ctx.send("uh oh")
+
+
+class Sheet(commands.Cog):
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.curr = ["Fall", "2023"] #setting this as curr until actual method is established
+        
+    @commands.command()
+    async def sheet(self, ctx):
+        text = ctx.message.content.split(" ")
+        del text[0]
+        if len(text) == 0:
+            await ctx.send("Bad command")
+            return
+
+        main_commands = ["build", "get", "set", "read", "delete"]
+
+        if text[0] not in main_commands:
+            await ctx.send("Bad command")
+            return
+        match text[0]:
+            case "build":
+                await SheetBuild().build(ctx, text)
+            case "get":
+                await SheetGet().eval_next(ctx, text)
+            case "delete":
+                await SheetDelete().delete(ctx, text)
+            case "set":
+                await SheetSet().eval_next(ctx, text)
+            case _:
+                return
+    
+    @commands.command()
+    async def att(self, ctx):
+        text = ctx.message.content.split(" ")
+        text[0] = "attendance"
+        if len(text) == 0:
+            await ctx.send("Bad command: you need to input data.")
+            return
+        if text[-1] in ["epee", "&e", "foil", "&f", "sabre", "saber", "&s"]:
+            text = text + self.curr
+        await SheetSet().attendance(ctx, text)
+
+    @commands.command()
+    async def inv(self, ctx):
+        text = ctx.message.content.split(" ")
+        text[0] = "inventory"
+        if len(text) == 0:
+            await ctx.send("Bad command: you need to input data.")
+            return
+        if text[-1] in ["broken", "&b", "fixed", "&f"]:
+            text = text + self.curr
+        await SheetSet().inventory(ctx, text)
+        
 
 
 class SheetGet:
@@ -170,9 +226,10 @@ class SheetGet:
         await ctx.send(embed=embed, file=embed_image)
 
 
-
 class SheetDelete:
-    
+    """
+    CURRENTLY THERE IS NO CHECK TO SEE IF IT IS ME CALLING THE COMMAND
+    """
     async def delete(self, ctx, text):
         text.pop(0)
         if len(text) == 1 or text[len(text) - 1].lower() != "confirm":
@@ -196,12 +253,18 @@ class SheetDelete:
 
 class SheetSet:
 
-    inventory_commands = ["inventory", "'i"]
-    attendance_commands = ["attendance", "'a"]
-    epee = ["epee", "'e"]
-    foil = ["foil", "'f"]
-    sabre = ["sabre", "saber", "'s"]
+    inventory_commands = ["inventory", "&i"]
+    attendance_commands = ["attendance", "&a"]
+    epee = ["epee", "&e"]
+    foil = ["foil", "&f"]
+    sabre = ["sabre", "saber", "&s"]
     attendance_sheet_order = ["date", "foil", "sabre", "epee"]
+    inventory_types = ["epee", "&e", "foil", "&f", "sabre", "saber", "&s", "epee bodycord", "&ebc",
+                       "foil bodycord", "sabre bodycord", "saber bodycord", "foil/sabre bodycord", "&rowbc",
+                       "maskcord", "&mc"]
+    #&rowbc is right of way bodycord.
+    broken = ["broken", "&b"]
+    fixed = ["fixed", "&fi"]
     
 
     async def eval_next(self, ctx, text):
@@ -305,17 +368,109 @@ class SheetSet:
             await ctx.message.add_reaction(affirmative)
         except HttpError as err:
             await dm_error(ctx)
-            
 
 
+    async def inventory(self, ctx, text):
+        """
+        !sheet set inventory 1 epee broken Fall 2023
+        !sheet set inventory 1 epee bodycord broken Fall 2023
+        !sheet set inventory 1 mask cord fixed Fall 2023
+        !sheet set inventory 1 maskcord broken Fall 2023
+        """
 
-    async def inventory():
-        return
+        del text[0] #removes inventory call
+        if not len(text) >= 4:
+            await ctx.send("Bad command, missing commands.")
+            return
 
-    
-    
+        count_to_change = text[0]
+        if count_to_change.isnumeric():
+            count_to_change = int(count_to_change)
+        else:
+            await ctx.send("Bad command: immediatly after calling inventory, specify the amount of change as "\
+                           "a digit.")
+            return
+        
+        del text[0] #removes the count
+        type_to_change = text[0]
+        if type_to_change in self.inventory_types and text[1] not in ["body", "bodycord"]:
+            del text[0]
+        elif text[1] == "bodycord":
+            type_to_change = type_to_change + " " + text[1]
+            del text[0:2]            
+        elif text[2] == "cord":
+            type_to_change = type_to_change + " " + "".join(text[1:3])
+            del text[0:3]
+        else:
+            await ctx.send("Bad type specification. If entering a weapon, just specify the type,"\
+                           " not the word 'blade'.")
+            return
+
+        if type_to_change not in self.inventory_types:
+            await ctx.send("Bad type specification. You entered: " + type_to_change + ". Accepted values are: "\
+                           + ", ".join(self.inventory_types))
+            return
+
+        if text[0] in self.fixed:
+            count_to_change *= -1 #depricates the count in the sheet by the amount fixed
+        elif text[0] not in self.broken:
+            await ctx.send("Bad specification of whether it is broken or fixed.")
+            return
+
+        del text[0]
+
+        exists = find(" ".join(text))
+        if exists is None:
+            await ctx.send("The specified sheet does not exist")
+            return
+
+        sheet_row = 1
+        if type_to_change in ["foil", "&f"]:
+            sheet_row = 2
+        elif type_to_change in ["sabre", "saber", "&s"]:
+            sheet_row = 3
+        elif type_to_change in ["epee bodycord", "&ebc"]:
+            sheet_row = 4
+        elif type_to_change in ["foil bodycord", "sabre bodycord", "saber bodycord", "&rowbc"]:
+            sheet_row = 5
+        elif type_to_change in ["maskcord", "&mc"]:
+            sheet_row = 6
+        spreadsheet_id = exists['id']
+        
+        sheet_range = "Broken_Count!B" + str(sheet_row) + ":B" + str(sheet_row)
+
+        old_data = await SheetGet().get_data(ctx, spreadsheet_id, sheet_range)
+
+        new_data = None
+        if len(old_data) == 0:
+            new_data = 0 + count_to_change
+        else:
+            new_data = count_to_change + int(old_data[0][0])
+
+        if new_data < 0:
+            new_data == 0
+
+        body = {
+            'values':
+            [
+                [new_data]
+            ]
+        }
+
+        try:
+            service = build('sheets', 'v4', credentials=credentials)
+            service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id, range=sheet_range, body=body, valueInputOption="USER_ENTERED"
+            ).execute()
+            await ctx.message.add_reaction(affirmative)
+        except HttpError as err:
+            await dm_error(ctx)
+         
 
     async def curr():
+        """
+        Implement w cogs
+        """
         return
 
 
@@ -369,10 +524,11 @@ class SheetBuild:
         init_range_att = "Attendance!A1:E1"
         init_values_att = ['Date', 'Foil', 'Sabre', 'Epee', 'Total']
         
-        init_range_inv = "Broken_Count!A1:C1"
-        init_values_inv = ['Foil', 'Sabre', 'Epee']
+        init_range_inv = "Broken_Count!A1:A6"
+        init_values_inv = ['Epee blades', 'Foil blades', 'Sabre blades','Epee bodycords',
+                           'Foil/Sabre bodycords', 'Maskcords']
         
-        #creates a new sheet named 'Attendance' and renames the first sheet to 'Inventory'
+        #creates a new sheet named 'Attendance' and renames the first sheet to 'Broken_Count'
         body_init = {
             'requests':[{
                 'addSheet':{
@@ -390,38 +546,44 @@ class SheetBuild:
                 }
             }]
         }
+        
         try:
             service = build('sheets', 'v4', credentials=credentials)
-
             service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body_init).execute()
             response = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-            sheet_ids = response.get('sheets', '')
         except HttpError as err:
             await dm_error(ctx)
+            await ctx.send(err)
+            return
         
         body_att = {
             'values':[
                 init_values_att
             ]
         }
-
         body_inv = {
+            'majorDimension': 'COLUMNS',
             'values':[
                 init_values_inv
             ]
         }
+        
         try:
             service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id, range=init_range_att, body=body_att, valueInputOption='USER_ENTERED'
+                spreadsheetId=spreadsheet_id, range=init_range_att, body=body_att,
+                valueInputOption='USER_ENTERED'
             ).execute()
             service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id, range=init_range_inv, body=body_inv, valueInputOption='USER_ENTERED'
+                spreadsheetId=spreadsheet_id, range=init_range_inv, body=body_inv,
+                valueInputOption='USER_ENTERED'
             ).execute()
         except HttpError as err:
-            await dm_error(ctx)
+            # await dm_error(ctx)
+            await ctx.send(err)
+            return
 
         await ctx.message.add_reaction(affirmative)
 
        
-
-
+async def setup(bot):
+    await bot.add_cog(Sheet(bot))

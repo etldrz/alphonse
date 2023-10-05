@@ -9,7 +9,6 @@ from datetime import date
 from dotenv import load_dotenv
 from discord.ext import commands
 
-import sheet
 
 INTENTS = discord.Intents(messages=True, guilds=True, members=True,
                           message_content=True, dm_messages=True)
@@ -21,6 +20,10 @@ personal_id = int(os.getenv('PERSONAL_ID'))
 
 
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
+
+
+def check_if_personal(ctx):
+    return ctx.message.author.id == personal_id
 
 async def load_extensions():
     for f in os.listdir('./cogs'):
@@ -230,33 +233,33 @@ def find(name):
     return None
 
 
-@bot.command(name='sheet')
-async def sheet_switch(ctx):
-    if ctx.author.id != personal_id:
-        return
+# @bot.command(name='sheet')
+# async def sheet_switch(ctx):
+#     if ctx.author.id != personal_id:
+#         return
     
-    text = ctx.message.content.split(" ")
-    text.pop(0)
-    if len(text) == 0:
-        await ctx.send("Bad command")
-        return
+#     text = ctx.message.content.split(" ")
+#     text.pop(0)
+#     if len(text) == 0:
+#         await ctx.send("Bad command")
+#         return
 
-    main_commands = ["build", "get", "set", "read", "delete"]
+#     main_commands = ["build", "get", "set", "read", "delete"]
 
-    if text[0] not in main_commands:
-        await ctx.send("Bad command")
-        return
-    match text[0]:
-        case "build":
-            await sheet.SheetBuild().build(ctx, text)
-        case "get":
-            await sheet.SheetGet().eval_next(ctx, text)
-        case "delete":
-            await sheet.SheetDelete().delete(ctx, text)
-        case "set":
-            await sheet.SheetSet().eval_next(ctx, text)
-        case _:
-            return
+#     if text[0] not in main_commands:
+#         await ctx.send("Bad command")
+#         return
+#     match text[0]:
+#         case "build":
+#             await sheet.SheetBuild().build(ctx, text)
+#         case "get":
+#             await sheet.SheetGet().eval_next(ctx, text)
+#         case "delete":
+#             await sheet.SheetDelete().delete(ctx, text)
+#         case "set":
+#             await sheet.SheetSet().eval_next(ctx, text)
+#         case _:
+#             return
 
 
 @bot.command(name='test')
