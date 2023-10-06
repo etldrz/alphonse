@@ -19,7 +19,7 @@ GUILD = os.getenv('DISCORD_GUILD')
 personal_id = int(os.getenv('PERSONAL_ID'))
 
 
-bot = commands.Bot(command_prefix='!', intents=INTENTS)
+bot = commands.Bot(command_prefix='$', intents=INTENTS)
 
 
 def check_if_personal(ctx):
@@ -104,7 +104,7 @@ async def wisdom(ctx):
 async def quote_submit(ctx):
     """
     Consider having quote.submit feed immediately into data.active_quotes.quotes. If that, then give me
-    commands to delete quotes.
+    commands to delete quotes. Remember to make this also process responses.
     """
     with open("data/newquote.txt", mode="a") as f:
         new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
@@ -261,25 +261,11 @@ def find(name):
 #         case _:
 #             return
 
-
-@bot.command(name='test')
-async def test(ctx):
-    channel = bot.get_channel(1153007466297172129)
-    count = 0
-    async for message in channel.history(limit=100):
-        if len(message.attachments) > 0:
-            for attachment in message.attachments:
-                if attachment.content_type.split("/")[0] == "image":
-                    await ctx.send("woah")
-            count += 1
-    if count == 0:
-        await ctx.send("fuck")
-
 async def main():
     async with bot:
         await load_extensions()
         await bot.start(TOKEN)
+        
 bot.setup_hook = load_extensions
 bot.run(TOKEN)
-
 # asyncio.run(main())

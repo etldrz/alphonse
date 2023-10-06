@@ -10,7 +10,6 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.errors import HttpError
 
 
-
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive',
           'https://www.googleapis.com/auth/drive.metadata',
@@ -28,6 +27,35 @@ drive = build('drive', 'v3', credentials=credentials)
 curr_sheet = "test" # holds the name of the current working sheet
 
 affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
+
+curr = ["Fall", "2023"] #setting this as curr until actual method is established
+
+
+    # inventory_commands = ["inventory", "i"]
+    # attendance_commands = ["attendance", "a"]
+    # epee = ["epee", "e"]
+    # foil = ["foil", "f"]
+    # sabre = ["sabre", "saber", "s"]
+    # attendance_sheet_order = ["date", "foil", "sabre", "epee"]
+    # inventory_types = ["epee", "e", "foil", "f", "sabre", "saber", "s", "epee bodycord", "ebc",
+    #                    "foil bodycord", "sabre bodycord", "saber bodycord", "rowbc", "maskcord", "mc"]
+    # #rowbc is right of way bodycord.
+    # broken = ["broken", "b"]
+    # fixed = ["fixed", "fi"]
+    
+
+
+
+
+    # inventory_commands = ["inventory", "i"]
+    # attendance_commands = ["attendance", "a"]
+    # as_text = ["cat"]
+    # as_plot = ["plot", "p"]
+    # plot_types = ["pie", "bar"]
+
+
+## the above two chunks are up here to remind me to think about finding a more better way to implement.
+## maybe dict?
 
 
 def find(name):
@@ -48,7 +76,7 @@ class Sheet(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.curr = ["Fall", "2023"] #setting this as curr until actual method is established
+        
         
     @commands.command()
     async def sheet(self, ctx):
@@ -82,8 +110,9 @@ class Sheet(commands.Cog):
         if len(text) == 0:
             await ctx.send("Bad command: you need to input data.")
             return
-        if text[-1] in ["epee", "&e", "foil", "&f", "sabre", "saber", "&s"]:
+        if text[-1] in ["epee", "e", "foil", "f", "sabre", "saber", "s"]:
             text = text + self.curr
+            await ctx.send("Using the in-use sheet: " + " ".join(curr))
         await SheetSet().attendance(ctx, text)
 
     @commands.command()
@@ -93,8 +122,9 @@ class Sheet(commands.Cog):
         if len(text) == 0:
             await ctx.send("Bad command: you need to input data.")
             return
-        if text[-1] in ["broken", "&b", "fixed", "&f"]:
-            text = text + self.curr
+        if text[-1] in ["broken", "b", "fixed", "f"]:
+            text = text + curr
+            await ctx.send("Using the in-use sheet: " + " ".join(curr))
         await SheetSet().inventory(ctx, text)
         
 
@@ -102,20 +132,20 @@ class Sheet(commands.Cog):
 class SheetGet:
     
     """
-    FORMATTING: get 'a/'i/curr/SHEET_NAME
+    FORMATTING: get a/i/curr/SHEET_NAME
     IF LAST TWO THEN SHEET EMBED LINKED IS OUTPUTTED
     ELSE:
-        'r/'p
+        r/p
     IF RECENT, THEN RECENT DATA OUTPUTTED AS TEXT
     IF PLOT, THEN:
         pie/bar
     FOR ATTENDANCE AND INVENTORY, THE SHEET NAME WILL BE SPECIFIED AT THE END.
     """
 
-    inventory_commands = ["inventory", "'i"]
-    attendance_commands = ["attendance", "'a"]
+    inventory_commands = ["inventory", "i"]
+    attendance_commands = ["attendance", "a"]
     as_text = ["cat"]
-    as_plot = ["plot", "'p"]
+    as_plot = ["plot", "p"]
     plot_types = ["pie", "bar"]
                   
     async def eval_next(self, ctx, text):
@@ -136,74 +166,77 @@ class SheetGet:
         
         exists = None
         if text[0] == "curr":
-            exists = find(curr_sheet)
-            text = curr_sheet
+            exists = find(" ".join(curr))
+            text = curr
         else:
             exists = find(" ".join(text))
         
-        if exists == None:
-            await ctx.send("Bad command.")
+        if exists is None:
+            await ctx.send("The requested sheet does not exist in the parent directory.")
             return
 
         await self.get_link(ctx, text, exists)
 
     
-    async def get_data(self, ctx, spreadsheet_id, pull_range):
+    async def get_data(self, ctx, spreadsheet_id, pull_range, dim = "ROWS"):
+        """
+        Is only good for a single range; if multiple ranges are needed for a single get,
+        consider using batchGet. Will pull by rows unless specified otherwise.
+        googleapi enums for dim: ROWS COLUMNS
+        """
         try:
             service = build('sheets', 'v4', credentials=credentials)
             result = service.spreadsheets().values().get(
                 spreadsheetId=spreadsheet_id, range=pull_range
             ).execute()
-
         except HttpError as err:
             await dm_error(ctx)
             return
-                
         data = result.get('values', [])
         return data
 
 
-    async def attendance(self, ctx, text):
-        text.pop(0)
-        exists = None
-        if len(text) == 0:
-            await ctx.send("Without specification, curr will be accessed.")
-            exists = find(curr_sheet)
-        else:
-            exists = find(" ".join(text))
+    # async def attendance(self, ctx, text):
+        # del text[0]
+        # exists = None
+        # if len(text) == 0:
+        #     await ctx.send("Without specification, curr will be accessed.")
+        #     exists = find(Sheet.curr)
+        # else:
+        #     exists = find(" ".join(text))
 
             
-        if exists == None:
-            await ctx.send("Please specify an existing spreadsheet.")
-            return
+        # if exists is None:
+        #     await ctx.send("Please specify an existing spreadsheet.")
+        #     return
 
-        spreadsheet_id = exists['id']
+        # spreadsheet_id = exists['id']
     
-        #ignoring recent and plot for now
+        # #ignoring recent and plot for now
 
-        pull_length = 150
-        range = "Attendance!A1:E" + str(pull_length)
-        data = await self.get_data(ctx, spreadsheet_id, range)
+        # pull_length = 150
+        # range = "Attendance!A1:E" + str(pull_length)
+        # data = await self.get_data(ctx, spreadsheet_id, range)
         
-        if len(data) == pull_length:
-            await ctx.send("Please switch to a new sheet for future data, this one has too many rows to be "\
-                           "a single semester of fencing.")
-            pull_length = pull_length * 3
-            range = "Attendance!A1:E" + str(pull_length)
-            data = await self.get_data(ctx, spreadsheet_id, range)
-            if len(data) == pull_length:
-                await ctx.send("Data length is: " + pull_length + ". To be safe, this command will no longer be completed. "\
-                               "Consider using the get command to retrieve the sheet link.")
-                return
+        # if len(data) == pull_length:
+        #     await ctx.send("Please switch to a new sheet for future data, this one has too many rows to be "\
+        #                    "a single semester of fencing.")
+        #     pull_length = pull_length * 3
+        #     range = "Attendance!A1:E" + str(pull_length)
+        #     data = await self.get_data(ctx, spreadsheet_id, range)
+        #     if len(data) == pull_length:
+        #         await ctx.send("Data length is: " + pull_length + ". To be safe, this command will no longer be completed. "\
+        #                        "Consider using the get command to retrieve the sheet link.")
+        #         return
         
         
-        return data
+        # return data
 
 
 
     async def list(self, ctx):
         sheet_list = drive.files().list(
-            q= f"'{parent}' in parents and trashed=False", orderBy='recency'
+            q = f"'{parent}' in parents and trashed=False", orderBy='recency'
         ).execute()
 
         message = "VTFC data sheets:\n"
@@ -239,7 +272,7 @@ class SheetDelete:
         text.pop(len(text) - 1)
 
         exists = find(" ".join(text))
-        if exists == None:
+        if exists is None:
             await ctx.send("The file does not exist in the in-use directory.")
             return
 
@@ -253,22 +286,21 @@ class SheetDelete:
 
 class SheetSet:
 
-    inventory_commands = ["inventory", "&i"]
-    attendance_commands = ["attendance", "&a"]
-    epee = ["epee", "&e"]
-    foil = ["foil", "&f"]
-    sabre = ["sabre", "saber", "&s"]
+    inventory_commands = ["inventory", "i"]
+    attendance_commands = ["attendance", "a"]
+    epee = ["epee", "e"]
+    foil = ["foil", "f"]
+    sabre = ["sabre", "saber", "s"]
     attendance_sheet_order = ["date", "foil", "sabre", "epee"]
-    inventory_types = ["epee", "&e", "foil", "&f", "sabre", "saber", "&s", "epee bodycord", "&ebc",
-                       "foil bodycord", "sabre bodycord", "saber bodycord", "foil/sabre bodycord", "&rowbc",
-                       "maskcord", "&mc"]
-    #&rowbc is right of way bodycord.
-    broken = ["broken", "&b"]
-    fixed = ["fixed", "&fi"]
+    inventory_types = ["epee", "e", "foil", "f", "sabre", "saber", "s", "epee bodycord", "ebc",
+                       "foil bodycord", "sabre bodycord", "saber bodycord", "rowbc", "maskcord", "mc"]
+    #rowbc is right of way bodycord.
+    broken = ["broken", "b"]
+    fixed = ["fixed", "fi"]
     
 
     async def eval_next(self, ctx, text):
-        text.pop(0)
+        del text[0]
 
         if len(text) == 0:
             await ctx.send("Please specify what you would like to set.")
@@ -288,7 +320,7 @@ class SheetSet:
     
 
     async def attendance(self, ctx, text):
-        text.pop(0)
+        del text[0]
         if len(text) == 0:
             await ctx.send("Bad command")
             return
@@ -310,27 +342,20 @@ class SheetSet:
         
         duplicate = "You used the same weapon name two or more times. Bad command."
 
-
         for w in [1, 3, 5]:
             if text[w] in self.epee:
-                
                 if write_data[3] != 0:
                     await ctx.send(duplicate)
                     return
-
                 write_data[3] = text[w - 1]
             elif text[w] in self.sabre:
-                                
                 if write_data[2] != 0:
                     await ctx.send(duplicate)
-
                 write_data[2] = text[w - 1]
             elif text[w] in self.foil:
-                                
                 if write_data[1] != 0:
                     await ctx.send(duplicate)
                     return
-
                 write_data[1] = text[w - 1]
             else:
                 await ctx.send("Bad weapon entry. Check to see that you spelled everything correctly"\
@@ -338,18 +363,24 @@ class SheetSet:
                 return
                 
         del text[0:6]
-
-        text.insert(0, "'a")
-
-        get = await SheetGet().attendance(ctx, text)
-
-        range = "Attendance!A" + str(len(get) + 1) + ":E" + str(len(get) + 1)
-                        
-        exists = find(" ".join(text)) ## If at the front: more efficient
-        if exists == None:
+        
+        exists = find(" ".join(text))
+        if exists is None:
             await ctx.send("Bad data location")
             return
+
+        spreadsheet_id = exists['id']
+
+        pull_length = 50 # a little over days of practice for one semester
+        pull_range = "Attendance!A1" + ":A" + str(pull_length)
+
+        retrieved_data = await SheetGet().get_data(ctx, spreadsheet_id, pull_range)
+
+        if len(retrieved_data) == pull_length:
+            await ctx.send("Consider switching to a new sheet, there are 49 attendance values in this one.")
         
+        write_to_range = "Attendance!A" + str(len(retrieved_data) + 1) + ":E" + str(len(retrieved_data) + 1)
+
         write_data[-1] = sum(write_data[1:4])
 
         body = {
@@ -358,12 +389,10 @@ class SheetSet:
             ]
         }
 
-        spreadsheet_id = exists['id']
-
         try:
             service = build('sheets', 'v4', credentials=credentials)
             service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id, body=body, range=range, valueInputOption="USER_ENTERED"
+                spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
             ).execute()
             await ctx.message.add_reaction(affirmative)
         except HttpError as err:
@@ -425,15 +454,15 @@ class SheetSet:
             return
 
         sheet_row = 1
-        if type_to_change in ["foil", "&f"]:
+        if type_to_change in ["foil", "f"]:
             sheet_row = 2
-        elif type_to_change in ["sabre", "saber", "&s"]:
+        elif type_to_change in ["sabre", "saber", "s"]:
             sheet_row = 3
-        elif type_to_change in ["epee bodycord", "&ebc"]:
+        elif type_to_change in ["epee bodycord", "ebc"]:
             sheet_row = 4
-        elif type_to_change in ["foil bodycord", "sabre bodycord", "saber bodycord", "&rowbc"]:
+        elif type_to_change in ["foil bodycord", "sabre bodycord", "saber bodycord", "rowbc"]:
             sheet_row = 5
-        elif type_to_change in ["maskcord", "&mc"]:
+        elif type_to_change in ["maskcord", "mc"]:
             sheet_row = 6
         spreadsheet_id = exists['id']
         
@@ -467,12 +496,19 @@ class SheetSet:
             await dm_error(ctx)
          
 
-    async def curr():
-        """
-        Implement w cogs
-        """
-        return
-
+    async def curr(self, ctx, text):
+        del text[0]
+        if len(text) == 0:
+            await ctx.send("Please specify the name of a sheet you would like to set as in-use.")
+            return
+        name = " ".join(text)
+        exists = find(name)
+        if exists is None:
+            await ctx.send("There is no sheet by that name within the parent directory.")
+            return
+        curr = name.split(" ")
+        await ctx.message.add_reaction(affirmative)
+        
 
 class SheetBuild:
 
@@ -498,7 +534,7 @@ class SheetBuild:
 
         exists = find(title)
         if exists != None:
-            await ctx.send("The specified filename already exists. Try using the command 'sheet get list'"\
+            await ctx.send("The specified filename already exists. Try using the command 'sheet get list' "\
                            "or choosing a different name.")
             return
 
