@@ -19,7 +19,7 @@ GUILD = os.getenv('DISCORD_GUILD')
 personal_id = int(os.getenv('PERSONAL_ID'))
 
 
-bot = commands.Bot(command_prefix='$', intents=INTENTS)
+bot = commands.Bot(command_prefix='!', intents=INTENTS)
 
 
 def check_if_personal(ctx):

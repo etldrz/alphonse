@@ -1,4 +1,7 @@
 import discord
+import matplotlib.pyplot as plt
+import os
+import seaborn as sns
 from discord.ext import commands
 from datetime import date
 from googleapiclient.discovery import build
@@ -59,6 +62,9 @@ curr = ["Fall", "2023"] #setting this as curr until actual method is established
 
 
 def find(name):
+    if name == "curr":
+        name = " ".join(curr)
+        
     sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
 
     for file in sheet_list.get('files', []):
@@ -146,14 +152,14 @@ class SheetGet:
     attendance_commands = ["attendance", "a"]
     as_text = ["cat"]
     as_plot = ["plot", "p"]
-    plot_types = ["pie", "bar"]
+    plot_pie = ["pie"]
+    plot_bar = ["bar"]
                   
     async def eval_next(self, ctx, text):
+        del text[0]
         if len(text) == 0:
-            await ctx.send("Please further speciffy what you want.")
-            return
-
-        text.pop(0)
+            await ctx.send("Please further specify what you want.")
+            
         if text[0] == "list":
             await self.list(ctx)
             return
@@ -163,14 +169,11 @@ class SheetGet:
         elif text[0] in self.attendance_commands:
             await self.attendance(ctx, text)
             return
+        elif text[0] in self.as_plot:
+            await self.plot(ctx, text)
+            return
         
-        exists = None
-        if text[0] == "curr":
-            exists = find(" ".join(curr))
-            text = curr
-        else:
-            exists = find(" ".join(text))
-        
+        exists = find(" ".join(text))
         if exists is None:
             await ctx.send("The requested sheet does not exist in the parent directory.")
             return
@@ -187,7 +190,7 @@ class SheetGet:
         try:
             service = build('sheets', 'v4', credentials=credentials)
             result = service.spreadsheets().values().get(
-                spreadsheetId=spreadsheet_id, range=pull_range
+                spreadsheetId=spreadsheet_id, range=pull_range, majorDimension=dim
             ).execute()
         except HttpError as err:
             await dm_error(ctx)
@@ -231,6 +234,86 @@ class SheetGet:
         
         
         # return data
+
+
+    async def plot(self, ctx, text):
+        del text[0]
+        if len(text) == 0:
+            await ctx.send("Please specify [PLOT_TYPE DATA_TYPE SHEET_NAME]")
+            return
+
+        plot_type = text[0]
+        if plot_type not in self.plot_pie and plot_type not in self.plot_bar:
+            await ctx.send("Please specify PLOT_TYPE more better. Allowed responses are '"\
+                           + ", ".join(self.plot_pie) + "' and '" + ", ".join(self.plot_bar) + "'.")
+            return
+        del text[0]
+
+        data_type = text[0]
+        if data_type not in self.attendance_commands and data_type not in self.inventory_commands:
+            await ctx.send("Bad specification of data type. Allowed responses are '"\
+                           + ", ".join(self.attendance_commands) + "' and '" +\
+                           ", ".join(self.inventory_commands) + "'.")
+            return
+        del text[0]
+        
+        exists = find(" ".join(text))
+        if exists == None:
+            await ctx.send("Please specify a valid sheet name.")
+            return
+
+        data = None
+        if data_type in self.attendance_commands:
+            row_range = "75"
+            pull_range = "Attendance!A1:E" + row_range
+            data = await self.get_data(ctx, exists['id'], pull_range, "COLUMNS")
+        elif data_type in self.inventory_commands:
+            row_range = "6"
+            pull_range = "Inventory!A1:B" + row_range
+            data = await self.get_data(ctx, exists['id'], pull_range, "ROWS")
+        
+        types = [i.pop(0) for i in data]
+        if data_type in self.attendance_commands:
+            del types[0]
+            del types[-1]
+            del data[0]
+            del data[-1]
+        plot_data = [sum([int(j) for j in data[i]]) for i in range(len(types))]
+        loc = './data/images/active_plot.png'
+        
+        if plot_type in self.plot_pie:
+            plt.figure(figsize=(3, 3))
+            plt.pie(
+                plot_data,
+                labels=types,
+                autopct='%1.1f%%',
+                colors=sns.color_palette('Set2'),
+                explode=[0.01 for i in range(len(types))],
+                textprops={'fontsize':10}
+            )
+            plt.title(label="Attendance data for " + exists['name'])
+        elif plot_type in self.plot_bar:
+            plt.figure(figsize=(5,5))
+            plt.bar(
+                height=plot_data,
+                x=types,
+                color='darkviolet'
+            )
+            plt.title(label="Attendance data for " + exists['name'])
+        
+
+        plt.savefig(loc)
+        await ctx.send(file=discord.File(loc))
+
+        try:
+            os.remove(loc)
+        except:
+            await dm_error(ctx)
+
+            
+
+        
+        
 
 
 
@@ -466,7 +549,7 @@ class SheetSet:
             sheet_row = 6
         spreadsheet_id = exists['id']
         
-        sheet_range = "Broken_Count!B" + str(sheet_row) + ":B" + str(sheet_row)
+        sheet_range = "Inventory!B" + str(sheet_row) + ":B" + str(sheet_row)
 
         old_data = await SheetGet().get_data(ctx, spreadsheet_id, sheet_range)
 
@@ -501,8 +584,8 @@ class SheetSet:
         if len(text) == 0:
             await ctx.send("Please specify the name of a sheet you would like to set as in-use.")
             return
-        name = " ".join(text)
-        exists = find(name)
+
+        exists = find(" ".join(text))
         if exists is None:
             await ctx.send("There is no sheet by that name within the parent directory.")
             return
@@ -560,11 +643,11 @@ class SheetBuild:
         init_range_att = "Attendance!A1:E1"
         init_values_att = ['Date', 'Foil', 'Sabre', 'Epee', 'Total']
         
-        init_range_inv = "Broken_Count!A1:A6"
+        init_range_inv = "Inventory!A1:A6"
         init_values_inv = ['Epee blades', 'Foil blades', 'Sabre blades','Epee bodycords',
                            'Foil/Sabre bodycords', 'Maskcords']
         
-        #creates a new sheet named 'Attendance' and renames the first sheet to 'Broken_Count'
+        #creates a new sheet named 'Attendance' and renames the first sheet to 'Inventory'
         body_init = {
             'requests':[{
                 'addSheet':{
@@ -576,7 +659,7 @@ class SheetBuild:
                 'updateSheetProperties':{
                     'properties':{
                         'sheetId': 0,
-                        'title': "Broken_Count"
+                        'title': "Inventory"
                     },
                     'fields': 'title'
                 }
