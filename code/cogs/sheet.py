@@ -172,6 +172,9 @@ class SheetGet:
         elif text[0] in self.as_plot:
             await self.plot(ctx, text)
             return
+        elif text[0] in self.as_text:
+            await self.cat(ctx, text)
+            return
         
         exists = find(" ".join(text))
         if exists is None:
@@ -310,9 +313,33 @@ class SheetGet:
         except:
             await dm_error(ctx)
 
-            
 
+    async def cat(self, ctx, text):
+        del text[0]
+        if len(text) == 0:
+            await ctx.send("Please specify [DATA_TYPE SHEET_NAME].")
+            return
+
+        data_type = text.pop(0)
+        if data_type not in self.attendance_commands and data_type not in self.inventory_commands:
+            await ctx.send("Bad data type specification.")
+            return
+        exists = " ".join(text)
+        if exists == None:
+            await ctx.send("Please specify a valid sheet name.")
+            return
+
+        data = None
+        if data_type in self.attendance_commands:
+            row_range = "75"
+            pull_range = "Attendance!A1:E" + row_range
+            data = await self.get_data(ctx, exists['id'], pull_range, dim="COLUMNS")
+        elif data_type in self.inventory_commands:
+            row_range = "6"
+            pull_range = "Inventory!A1:B" + row_range
+            data = await self.get_data(ctx, exists['id'], pull_range, dim="ROWS")
         
+        types = [i.pop(0) for i in data]
         
 
 
