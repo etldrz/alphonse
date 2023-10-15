@@ -20,7 +20,7 @@ personal_id = int(os.getenv('PERSONAL_ID'))
 
 
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
-
+affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
 
 def check_if_personal(ctx):
     return ctx.message.author.id == personal_id
@@ -135,7 +135,7 @@ async def source(ctx):
 
 format = "%m/%d/%Y"
 # The data is recorded as 'DATE TEXT USER_ID CHANNEL_ID'
-@bot.command(name='remind.me', help='[MM/DD/YYYY TEXT] \n Will output the text you chose in the channel you'\
+@bot.command(name='remind.me', help='[MM/DD/YYYY TEXT] \n Will output the text you chose in the channel you '\
                                     'called the command in on the specified date')
 async def remind_me(ctx):
     user_input = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "").split(" ")
@@ -208,10 +208,10 @@ async def shit_list(ctx):
     if len(text) == 1:
         return
 
-    text.pop(0)
+    del text[0]
     person = None
     for m in ctx.guild.members:
-        if m.nick != None and m.nick == " ".join(text):
+        if m.name == " ".join(text) or m.nick == " ".join(text) or m.global_name == " ".join(text):
             person = m
         elif m.name == " ".join(text):
             person = m

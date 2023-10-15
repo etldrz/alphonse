@@ -4,6 +4,7 @@ import os
 import seaborn as sns
 from discord.ext import commands
 from datetime import date
+from datetime import datetime
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.auth.transport.requests import Request
@@ -32,6 +33,9 @@ curr_sheet = "test" # holds the name of the current working sheet
 affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
 
 curr = ["Fall", "2023"] #setting this as curr until actual method is established
+
+#the datetime format that is given to sheets for attendance logging.
+format = "%Y-%m-%d"
 
 
     # inventory_commands = ["inventory", "i"]
@@ -83,7 +87,6 @@ class Sheet(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         
-        
     @commands.command()
     async def sheet(self, ctx):
         text = ctx.message.content.split(" ")
@@ -112,12 +115,12 @@ class Sheet(commands.Cog):
     @commands.command()
     async def att(self, ctx):
         text = ctx.message.content.split(" ")
-        text[0] = "attendance"
-        if len(text) == 0:
+        if len(text) == 1:
             await ctx.send("Bad command: you need to input data.")
             return
+        text[0] = "attendance"
         if text[-1] in ["epee", "e", "foil", "f", "sabre", "saber", "s"]:
-            text = text + self.curr
+            text = text + curr
             await ctx.send("Using the in-use sheet: " + " ".join(curr))
         await SheetSet().attendance(ctx, text)
 
@@ -132,6 +135,23 @@ class Sheet(commands.Cog):
             text = text + curr
             await ctx.send("Using the in-use sheet: " + " ".join(curr))
         await SheetSet().inventory(ctx, text)
+    
+    @commands.command()
+    async def plot(self, ctx):
+        """
+        !plot [PLOT_TYPE] [DATA_TYPE] [SHEET_NAME]
+        If sheet name is not specified, then 'curr' is used.
+        """
+        text = ctx.message.content.split(" ")
+        if len(text) == 1:
+            await ctx.send("Bad command: you need to specify what data you want plotted.")
+            return
+        text[0] = "plot"
+        data_types = SheetGet.attendance_commands + SheetGet.inventory_commands
+        if text[-1] in data_types:
+            text = text + curr
+            await ctx.send("Using the in-use sheet: " + " ".join(curr))
+        await SheetGet().plot(ctx, text)
         
 
 
@@ -154,6 +174,7 @@ class SheetGet:
     as_plot = ["plot", "p"]
     plot_pie = ["pie"]
     plot_bar = ["bar"]
+    plot_line = ["line"]
                   
     async def eval_next(self, ctx, text):
         del text[0]
@@ -176,12 +197,10 @@ class SheetGet:
             await self.cat(ctx, text)
             return
         
-        exists = find(" ".join(text))
-        if exists is None:
-            await ctx.send("The requested sheet does not exist in the parent directory.")
-            return
-
-        await self.get_link(ctx, text, exists)
+        #If the other options are exhausted, it is assumed that the remainder of the command
+        #is a sheet name.
+        await self.get_link(ctx, text)
+    
 
     
     async def get_data(self, ctx, spreadsheet_id, pull_range, dim = "ROWS"):
@@ -202,43 +221,6 @@ class SheetGet:
         return data
 
 
-    # async def attendance(self, ctx, text):
-        # del text[0]
-        # exists = None
-        # if len(text) == 0:
-        #     await ctx.send("Without specification, curr will be accessed.")
-        #     exists = find(Sheet.curr)
-        # else:
-        #     exists = find(" ".join(text))
-
-            
-        # if exists is None:
-        #     await ctx.send("Please specify an existing spreadsheet.")
-        #     return
-
-        # spreadsheet_id = exists['id']
-    
-        # #ignoring recent and plot for now
-
-        # pull_length = 150
-        # range = "Attendance!A1:E" + str(pull_length)
-        # data = await self.get_data(ctx, spreadsheet_id, range)
-        
-        # if len(data) == pull_length:
-        #     await ctx.send("Please switch to a new sheet for future data, this one has too many rows to be "\
-        #                    "a single semester of fencing.")
-        #     pull_length = pull_length * 3
-        #     range = "Attendance!A1:E" + str(pull_length)
-        #     data = await self.get_data(ctx, spreadsheet_id, range)
-        #     if len(data) == pull_length:
-        #         await ctx.send("Data length is: " + pull_length + ". To be safe, this command will no longer be completed. "\
-        #                        "Consider using the get command to retrieve the sheet link.")
-        #         return
-        
-        
-        # return data
-
-
     async def plot(self, ctx, text):
         del text[0]
         if len(text) == 0:
@@ -246,7 +228,7 @@ class SheetGet:
             return
 
         plot_type = text[0]
-        if plot_type not in self.plot_pie and plot_type not in self.plot_bar:
+        if plot_type not in self.plot_pie and plot_type not in self.plot_bar and plot_type not in self.plot_line:
             await ctx.send("Please specify PLOT_TYPE more better. Allowed responses are '"\
                            + ", ".join(self.plot_pie) + "' and '" + ", ".join(self.plot_bar) + "'.")
             return
@@ -259,6 +241,10 @@ class SheetGet:
                            ", ".join(self.inventory_commands) + "'.")
             return
         del text[0]
+
+        if plot_type in self.plot_line and data_type in self.inventory_commands:
+            await ctx.send("Line plot is not allowed for inventory.")
+            return
         
         exists = find(" ".join(text))
         if exists == None:
@@ -275,16 +261,18 @@ class SheetGet:
             pull_range = "Inventory!A1:B" + row_range
             data = await self.get_data(ctx, exists['id'], pull_range, "ROWS")
         
-        types = [i.pop(0) for i in data]
-        if data_type in self.attendance_commands:
-            del types[0]
-            del types[-1]
-            del data[0]
-            del data[-1]
-        plot_data = [sum([int(j) for j in data[i]]) for i in range(len(types))]
         loc = './data/images/active_plot.png'
         
         if plot_type in self.plot_pie:
+            types = [i.pop(0) for i in data]            
+            if data_type in self.attendance_commands:
+                del types[0]
+                del types[-1]
+                del data[0]
+                del data[-1]
+
+            plot_data = [sum([int(j) for j in data[i]]) for i in range(len(types))]
+                
             plt.figure(figsize=(3, 3))
             plt.pie(
                 plot_data,
@@ -294,16 +282,40 @@ class SheetGet:
                 explode=[0.01 for i in range(len(types))],
                 textprops={'fontsize':10}
             )
-            plt.title(label="Attendance data for " + exists['name'])
+            if data_type in self.attendance_commands:
+                plt.title(label="Attendance for " + exists['name'])
+            elif data_type in self.inventory_commands:
+                plt.title(label="Broken inventory for " + exists['name'])
         elif plot_type in self.plot_bar:
-            plt.figure(figsize=(5,5))
+            types = [i.pop(0) for i in data]            
+            if data_type in self.attendance_commands:
+                del types[0]
+                del types[-1]
+                del data[0]
+                del data[-1]
+
+            plot_data = [sum([int(j) for j in data[i]]) for i in range(len(types))]
+                
+            plt.figure(figsize=(7, 5))
             plt.bar(
                 height=plot_data,
                 x=types,
-                color='darkviolet'
+                color='steelblue'
             )
-            plt.title(label="Attendance data for " + exists['name'])
-        
+            if data_type in self.attendance_commands:
+                plt.title(label="Attendance for " + exists['name'])
+            elif data_type in self.inventory_commands:
+                plt.title(label="Broken inventory for " + exists['name'])
+            plt.xticks(rotation=12, ha='right')
+        elif plot_type in self.plot_line:
+            [i.pop(0) for i in data]
+            dates = [i.strftime('%b-%d') for i in [datetime.strptime(j, format) for j in data[0]]]
+            total_att = [int(i) for i in data[-1]]
+            plt.figure(figsize=(7,5))
+            plt.plot(dates, total_att)
+            plt.title(label="Total attendance for " + exists['name'])
+            plt.xlabel(None)
+            plt.ylabel("Total Attendance")
 
         plt.savefig(loc)
         await ctx.send(file=discord.File(loc))
@@ -357,13 +369,17 @@ class SheetGet:
         await ctx.send(message)
 
 
-    async def get_link(self, ctx, text, exists):
+    async def get_link(self, ctx, text):
+        exists = find(" ".join(text))
+        if exists == None:
+            await ctx.send("The requested sheet does not exist.")
+            return
         spreadsheet_id = exists['id']
         url = f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}'
         embed = discord.Embed()
         embed_image = discord.File('data/images/Google_Sheets_logo.png', filename='sheets_logo.png')
         embed.url = url
-        embed.title = " ".join(text)
+        embed.title = exists['name']
         embed.description = "The requested Google Sheet."
         embed.set_image(url='attachment://sheets_logo.png')
         await ctx.send(embed=embed, file=embed_image)
@@ -436,7 +452,7 @@ class SheetSet:
             return
         
 
-        curr_date = str(date.today()) #for results sake
+        curr_date = str(date.today())
         # if text[0] == "today":
         #     curr_date = date.today()
 
