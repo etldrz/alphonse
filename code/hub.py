@@ -5,25 +5,17 @@ import json
 import requests
 import data.active_quotes
 import asyncio
+import alphonse_utils as AlphonseUtils
 from datetime import date
-from dotenv import load_dotenv
 from discord.ext import commands
 
 
 INTENTS = discord.Intents(messages=True, guilds=True, members=True,
                           message_content=True, dm_messages=True)
 
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD = os.getenv('DISCORD_GUILD')
-personal_id = int(os.getenv('PERSONAL_ID'))
 
 
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
-affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
-
-def check_if_personal(ctx):
-    return ctx.message.author.id == personal_id
 
 async def load_extensions():
     for f in os.listdir('./cogs'):
@@ -109,7 +101,7 @@ async def quote_submit(ctx):
     with open("data/newquote.txt", mode="a") as f:
         new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
         f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
-    await ctx.message.add_reaction(affirmative)
+    AlphonseUtils.affirmation()
 
 
 @bot.command(name='source')
@@ -153,8 +145,7 @@ async def remind_me(ctx):
         user_input.append(str(ctx.author.id) + " " + str(ctx.channel.id) + " \n")
         f.write(" ".join(user_input))
 
-    await ctx.message.add_reaction(affirmative)
-
+    AlphonseUtils.affirmation()
 
 
 async def check_remind():
@@ -201,7 +192,7 @@ async def mood(ctx):
 
 @bot.command(name='shit.list', help=':(')
 async def shit_list(ctx):
-    if ctx.author.id != personal_id:
+    if not AlphonseUtils.check_if_personal():
         return
 
     text = ctx.message.content.split(" ")
@@ -235,7 +226,7 @@ def find(name):
 
 # @bot.command(name='sheet')
 # async def sheet_switch(ctx):
-#     if ctx.author.id != personal_id:
+#     if ctx.author.id != AlphonseUtils.personal_id:
 #         return
     
 #     text = ctx.message.content.split(" ")
@@ -264,8 +255,8 @@ def find(name):
 async def main():
     async with bot:
         await load_extensions()
-        await bot.start(TOKEN)
+        await bot.start(AlphonseUtils.TOKEN)
         
 bot.setup_hook = load_extensions
-bot.run(TOKEN)
+bot.run(AlphonseUtils.TOKEN)
 # asyncio.run(main())

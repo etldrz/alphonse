@@ -2,6 +2,7 @@ import discord
 import matplotlib.pyplot as plt
 import os
 import seaborn as sns
+import alphonse_utils as AlphonseUtils
 from discord.ext import commands
 from datetime import date
 from datetime import datetime
@@ -24,15 +25,9 @@ SERVICE_ACCOUNT_FILE = 'data/sensitive/alphonse-key.json'
 credentials = service_account.Credentials.from_service_account_file(
         SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
-parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC' #Parent file for Google Sheet related commands.
+parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC' #Parent folder where all sheets are stored.
 
 drive = build('drive', 'v3', credentials=credentials)
-
-curr_sheet = "test" # holds the name of the current working sheet
-
-affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
-
-curr = ["Fall", "2023"] #setting this as curr until actual method is established
 
 #the datetime format that is given to sheets for attendance logging.
 format = "%Y-%m-%d"
@@ -67,7 +62,7 @@ format = "%Y-%m-%d"
 
 def find(name):
     if name == "curr":
-        name = " ".join(curr)
+        name = " ".join(Sheet.curr)
         
     sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
 
@@ -78,11 +73,10 @@ def find(name):
     return None
 
 
-async def dm_error(ctx):
-    await ctx.send("uh oh")
-
 
 class Sheet(commands.Cog):
+
+    curr = ["Fall", "2023"] #the in-use sheet. can be changed by '!sheet set curr NAME'
 
     def __init__(self, bot):
         self.bot = bot
@@ -132,8 +126,8 @@ class Sheet(commands.Cog):
             await ctx.send("Bad command: you need to input data.")
             return
         if text[-1] in ["broken", "b", "fixed", "f"]:
-            text = text + curr
-            await ctx.send("Using the in-use sheet: " + " ".join(curr))
+            text = text + self.curr
+            await ctx.send("Using the in-use sheet: " + " ".join(self.curr))
         await SheetSet().inventory(ctx, text)
     
     @commands.command()
@@ -149,8 +143,8 @@ class Sheet(commands.Cog):
         text[0] = "plot"
         data_types = SheetGet.attendance_commands + SheetGet.inventory_commands
         if text[-1] in data_types:
-            text = text + curr
-            await ctx.send("Using the in-use sheet: " + " ".join(curr))
+            text = text + self.curr
+            await ctx.send("Using the in-use sheet: " + " ".join(self.curr))
         await SheetGet().plot(ctx, text)
         
 
@@ -215,7 +209,7 @@ class SheetGet:
                 spreadsheetId=spreadsheet_id, range=pull_range, majorDimension=dim
             ).execute()
         except HttpError as err:
-            await dm_error(ctx)
+            await AlphonseUtils.dm_error(ctx)
             return
         data = result.get('values', [])
         return data
@@ -323,7 +317,7 @@ class SheetGet:
         try:
             os.remove(loc)
         except:
-            await dm_error(ctx)
+            await AlphonseUtils.dm_error(ctx)
 
 
     async def cat(self, ctx, text):
@@ -406,8 +400,7 @@ class SheetDelete:
 
         drive.files().delete(fileId=file_id).execute()
 
-        await ctx.message.add_reaction(affirmative)
-
+        AlphonseUtils.affirmation()
 
 
 class SheetSet:
@@ -433,7 +426,7 @@ class SheetSet:
             return
 
         if text[0] == "curr":
-            await self.curr(ctx, text)
+            await self.set_curr(ctx, text)
             return
         elif text[0] in self.attendance_commands:
             await self.attendance(ctx, text)
@@ -520,9 +513,9 @@ class SheetSet:
             service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
             ).execute()
-            await ctx.message.add_reaction(affirmative)
+            AlphonseUtils.affirmation()
         except HttpError as err:
-            await dm_error(ctx)
+            await AlphonseUtils.dm_error(ctx)
 
 
     async def inventory(self, ctx, text):
@@ -617,12 +610,12 @@ class SheetSet:
             service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, range=sheet_range, body=body, valueInputOption="USER_ENTERED"
             ).execute()
-            await ctx.message.add_reaction(affirmative)
+            AlphonseUtils.affirmation()
         except HttpError as err:
-            await dm_error(ctx)
+            await AlphonseUtils.dm_error(ctx)
          
 
-    async def curr(self, ctx, text):
+    async def set_curr(self, ctx, text):
         del text[0]
         if len(text) == 0:
             await ctx.send("Please specify the name of a sheet you would like to set as in-use.")
@@ -632,8 +625,8 @@ class SheetSet:
         if exists is None:
             await ctx.send("There is no sheet by that name within the parent directory.")
             return
-        curr = name.split(" ")
-        await ctx.message.add_reaction(affirmative)
+        Sheet.curr = exists['name'].split(" ")
+        AlphonseUtils.affirmation()
         
 
 class SheetBuild:
@@ -643,7 +636,7 @@ class SheetBuild:
 
         if len(text) == 0 or text[0] != "fencing":
             new_sheet = await self.make_sheet(ctx, text)
-            await ctx.message.add_reaction(affirmative)
+            AlphonseUtils.affirmation()
             return
         elif text[0] == "fencing":
             text.pop(0)
@@ -676,7 +669,7 @@ class SheetBuild:
             new_sheet = drive.files().create(body=file_metadata).execute()
             return new_sheet
         except HttpError as err:
-            await dm_error(ctx)
+            await AlphonseUtils.dm_error(ctx)
             return
 
 
@@ -714,8 +707,7 @@ class SheetBuild:
             service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body_init).execute()
             response = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
         except HttpError as err:
-            await dm_error(ctx)
-            await ctx.send(err)
+            await AlphonseUtils.dm_error(ctx)
             return
         
         body_att = {
@@ -740,11 +732,10 @@ class SheetBuild:
                 valueInputOption='USER_ENTERED'
             ).execute()
         except HttpError as err:
-            # await dm_error(ctx)
-            await ctx.send(err)
+            await AlphonseUtils.dm_error(ctx)
             return
 
-        await ctx.message.add_reaction(affirmative)
+        AlphonseUtils.affirmation()
 
        
 async def setup(bot):
