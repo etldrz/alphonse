@@ -86,23 +86,6 @@ async def on_member_join(member):
 #
 
 
-@bot.command(name='wisdom')
-async def wisdom(ctx):
-    response = random.choice(data.active_quotes.quotes)
-    await ctx.send(response)
-
-
-@bot.command(name='quote.submit')
-async def quote_submit(ctx):
-    """
-    Consider having quote.submit feed immediately into data.active_quotes.quotes. If that, then give me
-    commands to delete quotes. Remember to make this also process responses.
-    """
-    with open("data/newquote.txt", mode="a") as f:
-        new_quote = ctx.message.content.replace(bot.command_prefix + ctx.command.name, "")
-        f.write(new_quote + "\n\t -" + ctx.author.nick + "\n\n")
-    AlphonseUtils.affirmation()
-
 
 @bot.command(name='source')
 async def source(ctx):
@@ -166,24 +149,7 @@ async def send_remind(to_send):
    channel = bot.get_channel(channel_id)
    
    await channel.send(" ".join(to_send) + f"\n\t <@{user_id}> asked to be reminded of this")
-    
-
-# Will start a contest for fencer-spotted. Alphonse will log every picture and award a point to the picture taker.
-@bot.command(name='most.dangerous.game', help='Begins a contest for the channel fencer-spotted. Command input: time (hours)'\
-             'the contest will run for.')
-async def fencer_spotted(ctx):
-
-    contest_time = 48
-    response = ctx.message.content.split(" ")
-    if len(response) > 1:
-        contest_time = ctx.message.content.split(" ")[1]
-
-    if not contest_time.isdigit():
-        await ctx.send("Inpropper input, try the format [COMMAND TIME] with no punctuation.")
-        return
-
-    channel = bot.get_channel(1150564971843965050) # mute-me of tissue paper
-    
+        
 
 @bot.command(name='mood', help='Outputs a random emote from this server.')
 async def mood(ctx):
@@ -192,7 +158,7 @@ async def mood(ctx):
 
 @bot.command(name='shit.list', help=':(')
 async def shit_list(ctx):
-    if not AlphonseUtils.check_if_personal():
+    if not AlphonseUtils.check_if_personal(ctx):
         return
 
     text = ctx.message.content.split(" ")
@@ -200,57 +166,17 @@ async def shit_list(ctx):
         return
 
     del text[0]
-    person = None
-    for m in ctx.guild.members:
-        if m.name == " ".join(text) or m.nick == " ".join(text) or m.global_name == " ".join(text):
-            person = m
-        elif m.name == " ".join(text):
-            person = m
-            
+    person = await AlphonseUtils.get_member(ctx, target=" ".join(text))
+    if person is None:
+        return
+    
     dastardly_insults = ["*Stage whispers* \n You are a poo-poo pee-pee head",
                         "*sneezes in your drink*",
                         "*throws sand in your eyes*",
                         "*Extends hand to shake yours, then slicks back hair at the last possible moment*"]
     await person.send(random.choice(dastardly_insults))
-
-
-def find(name):
-    sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
-
-    for file in sheet_list.get('files', []):
-        if file['name'] == name:
-            return file
-
-    return None
-
-
-# @bot.command(name='sheet')
-# async def sheet_switch(ctx):
-#     if ctx.author.id != AlphonseUtils.personal_id:
-#         return
+    AlphonseUtils.affirmation(ctx)
     
-#     text = ctx.message.content.split(" ")
-#     text.pop(0)
-#     if len(text) == 0:
-#         await ctx.send("Bad command")
-#         return
-
-#     main_commands = ["build", "get", "set", "read", "delete"]
-
-#     if text[0] not in main_commands:
-#         await ctx.send("Bad command")
-#         return
-#     match text[0]:
-#         case "build":
-#             await sheet.SheetBuild().build(ctx, text)
-#         case "get":
-#             await sheet.SheetGet().eval_next(ctx, text)
-#         case "delete":
-#             await sheet.SheetDelete().delete(ctx, text)
-#         case "set":
-#             await sheet.SheetSet().eval_next(ctx, text)
-#         case _:
-#             return
 
 async def main():
     async with bot:

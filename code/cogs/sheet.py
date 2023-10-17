@@ -114,8 +114,8 @@ class Sheet(commands.Cog):
             return
         text[0] = "attendance"
         if text[-1] in ["epee", "e", "foil", "f", "sabre", "saber", "s"]:
-            text = text + curr
-            await ctx.send("Using the in-use sheet: " + " ".join(curr))
+            text = text + self.curr
+            await ctx.send("Using the in-use sheet: " + " ".join(self.curr))
         await SheetSet().attendance(ctx, text)
 
     @commands.command()
@@ -380,10 +380,11 @@ class SheetGet:
 
 
 class SheetDelete:
-    """
-    CURRENTLY THERE IS NO CHECK TO SEE IF IT IS ME CALLING THE COMMAND
-    """
+
     async def delete(self, ctx, text):
+        #check to make sure it is me calling this
+        if not AlphonseUtils.check_if_personal():
+            return
         text.pop(0)
         if len(text) == 1 or text[len(text) - 1].lower() != "confirm":
             await ctx.send("Please specify a file to delete, and type 'confirm' at the end.")
@@ -513,7 +514,7 @@ class SheetSet:
             service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
             ).execute()
-            AlphonseUtils.affirmation()
+            AlphonseUtils.affirmation(ctx)
         except HttpError as err:
             await AlphonseUtils.dm_error(ctx)
 
@@ -610,7 +611,7 @@ class SheetSet:
             service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, range=sheet_range, body=body, valueInputOption="USER_ENTERED"
             ).execute()
-            AlphonseUtils.affirmation()
+            AlphonseUtils.affirmation(ctx)
         except HttpError as err:
             await AlphonseUtils.dm_error(ctx)
          
@@ -626,7 +627,7 @@ class SheetSet:
             await ctx.send("There is no sheet by that name within the parent directory.")
             return
         Sheet.curr = exists['name'].split(" ")
-        AlphonseUtils.affirmation()
+        AlphonseUtils.affirmation(ctx)
         
 
 class SheetBuild:
@@ -636,7 +637,7 @@ class SheetBuild:
 
         if len(text) == 0 or text[0] != "fencing":
             new_sheet = await self.make_sheet(ctx, text)
-            AlphonseUtils.affirmation()
+            AlphonseUtils.affirmation(ctx)
             return
         elif text[0] == "fencing":
             text.pop(0)
@@ -735,7 +736,7 @@ class SheetBuild:
             await AlphonseUtils.dm_error(ctx)
             return
 
-        AlphonseUtils.affirmation()
+        AlphonseUtils.affirmation(ctx)
 
        
 async def setup(bot):
