@@ -17,8 +17,9 @@ class Wisdom(commands.Cog):
     @commands.command()
     async def wisdom(self, ctx):
         """
-        RENAME ME TO MOOD AND SYNC UP MOOD W ME.
+        Spits out a quote that has been given to Alphonse via `!quote.submit`
         """
+        
         with open("data/newquote.txt", mode="r") as f:
             data = f.read().split(self.break_command)
             chosen = random.choice(data)
@@ -27,9 +28,9 @@ class Wisdom(commands.Cog):
     @commands.command(name='quote.submit')
     async def quote_submit(self, ctx):
         """
-        Consider having quote.submit feed immediately into data.active_quotes.quotes. If that, then give me
-        commands to delete quotes. Remember to make this also process responses.
+        Takes the inputted text (or reaction text) and feeds it into a file which `!wisdom` draws from.
         """
+        
         quote = None
         author = None
         if ctx.message.reference is not None:

@@ -14,6 +14,10 @@ class Tournament(commands.Cog):
         
     @commands.command()
     async def tournament(self, ctx):
+        """
+        When called, anyone who reacts to the message will be added to a unique role, which can be called.
+        Useful for tournament organization.
+        """
         self.active_message_id = ctx.message.id
 
         current_roles = ctx.guild.roles
@@ -26,16 +30,17 @@ class Tournament(commands.Cog):
         guild = ctx.guild
         self.active_role = await guild.create_role(
             name="tournament", mentionable=True, color=discord.Color(0x229236))
-        await ctx.send(self.active_message_id)
 
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
+        """
+        Adds users who react to the `!tournament` call message to a unique role.
+        """
+        
         if reaction.message.id != self.active_message_id:
             return
         await user.add_roles(self.active_role)
-
-        
 
 
 async def setup(bot):

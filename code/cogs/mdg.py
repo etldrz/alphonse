@@ -14,12 +14,8 @@ class MostDangerousGame(commands.Cog):
     in a specified channel and logs points to users who send in the pictures. At the end,
     the top three scorers are announced. If TIME is not specified, 48 hours is used. Only
     one contest can be running at a time.
-
-    TODO:
-    - Add a command to deprecate points from a specified user (as a safety)
-    - Add a command to add points
-    - Add a function to see the entire score
     """
+
 
     current_context = None #used by the task to send messages to the chat it was called in.
     time = 2 #the default n units of time the contest runs for
@@ -33,6 +29,10 @@ class MostDangerousGame(commands.Cog):
         self.scoreboard = {AlphonseUtils.personal_id: 3, 1150550371123593287: 1, 1150523334094753832: 2}
 
     def add_point(self, user_id, count):
+        """
+        Adds an amount of points equal to count to the specified user.
+        """
+        
         for k in self.scoreboard.keys():
             if user_id == k:
                 self.scoreboard[k] += count
@@ -41,6 +41,10 @@ class MostDangerousGame(commands.Cog):
 
 
     async def on_end(self, ctx):
+        """
+        Deals with end of contest message and cleaning up.
+        """
+        
         self.previous_results.clear()
         if len(self.scoreboard) == 0:
             return
@@ -101,6 +105,12 @@ class MostDangerousGame(commands.Cog):
         
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
+        """
+        When users react to the message Alphonse releases at the end of the contest, the entire scoresheet will
+        be DM'd to them, provided there are more than three participants (the max amount the end of contest
+        message will announce).
+        """
+        
         if reaction.message.id != self.result_message_id:
             return
 
@@ -129,6 +139,10 @@ class MostDangerousGame(commands.Cog):
 
     @commands.command()
     async def kill(self, ctx):
+        """
+        Ends the current contest.
+        """
+        
         if not AlphonseUtils.check_if_personal(ctx):
             return
         self.contest.cancel()
@@ -159,8 +173,7 @@ class MostDangerousGame(commands.Cog):
     @commands.command()
     async def dep(self, ctx):
         """
-        Depricates a point from the named user. Assuming (read:hoping) that I only have to call this in
-        increments of one because that's all its currently good for.
+        Depricates a point from the named user.
         """
 
         if not AlphonseUtils.check_if_personal(ctx):
@@ -183,7 +196,7 @@ class MostDangerousGame(commands.Cog):
     @commands.command(name="friendship.killer")
     async def friendship_killer(self, ctx):
         """
-        Starts a contest for #fencer-spotted
+        Starts a contest for #fencer-spotted.
         """
         
         text = ctx.message.content.split(" ")
@@ -206,8 +219,12 @@ class MostDangerousGame(commands.Cog):
         self.contest.start()
 
 
-    @tasks.loop(seconds=10, count=2)
+    @tasks.loop(hours=time, count=2)
     async def contest(self):
+        """
+        Deals with how long the contest will run for.
+        """
+        
         if self.starting:
             message = "The contest to spot as many of your peers as possible has just begun. Each picture "\
                 "that you post into this channel will automaticall earn you a point; the results will be "\

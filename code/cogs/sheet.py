@@ -32,35 +32,11 @@ drive = build('drive', 'v3', credentials=credentials)
 #the datetime format that is given to sheets for attendance logging.
 format = "%Y-%m-%d"
 
-
-    # inventory_commands = ["inventory", "i"]
-    # attendance_commands = ["attendance", "a"]
-    # epee = ["epee", "e"]
-    # foil = ["foil", "f"]
-    # sabre = ["sabre", "saber", "s"]
-    # attendance_sheet_order = ["date", "foil", "sabre", "epee"]
-    # inventory_types = ["epee", "e", "foil", "f", "sabre", "saber", "s", "epee bodycord", "ebc",
-    #                    "foil bodycord", "sabre bodycord", "saber bodycord", "rowbc", "maskcord", "mc"]
-    # #rowbc is right of way bodycord.
-    # broken = ["broken", "b"]
-    # fixed = ["fixed", "fi"]
-    
-
-
-
-
-    # inventory_commands = ["inventory", "i"]
-    # attendance_commands = ["attendance", "a"]
-    # as_text = ["cat"]
-    # as_plot = ["plot", "p"]
-    # plot_types = ["pie", "bar"]
-
-
-## the above two chunks are up here to remind me to think about finding a more better way to implement.
-## maybe dict?
-
-
 def find(name):
+    """
+    Returns a sheet based on the inputted name, if that sheet exists. None if otherwise.
+    """
+
     if name == "curr":
         name = " ".join(Sheet.curr)
         
@@ -73,27 +49,40 @@ def find(name):
     return None
 
 
-
 class Sheet(commands.Cog):
+
 
     curr = ["Fall", "2023"] #the in-use sheet. can be changed by '!sheet set curr NAME'
 
     def __init__(self, bot):
         self.bot = bot
-        
+
+
+    @commands.command()
+    async def flowchart(self, ctx):
+        """
+        Links to a page describing Alphonse's logic flow for `!sheet`.
+        """
+
+        file = discord.File("data/images/will_o_wisp.jpg", filename="wisp.jpg")
+        embed = discord.Embed()
+        embed.url = "https://github.com/etldrz/alphonse/blob/main/README.md#sheet"
+        embed.title = "Flowchart for `!sheet` commands."
+        embed.set_image(url="attachment://wisp.jpg")
+        await ctx.send(file=file, embed=embed)
+    
+
     @commands.command()
     async def sheet(self, ctx):
+        """
+        Command that lets Alphonse know you're dealing with sheets. See `!flowchart` for more details.
+        """
         text = ctx.message.content.split(" ")
         del text[0]
         if len(text) == 0:
             await ctx.send("Bad command")
             return
 
-        main_commands = ["build", "get", "set", "read", "delete"]
-
-        if text[0] not in main_commands:
-            await ctx.send("Bad command")
-            return
         match text[0]:
             case "build":
                 await SheetBuild().build(ctx, text)
@@ -104,10 +93,16 @@ class Sheet(commands.Cog):
             case "set":
                 await SheetSet().eval_next(ctx, text)
             case _:
+                await ctx.send("Bad command. Main command not accepted.")
                 return
+
     
     @commands.command()
     async def att(self, ctx):
+        """
+        Shortcut for `!sheet set attendance`. Doesn't need sheet_name specified.
+        """
+        
         text = ctx.message.content.split(" ")
         if len(text) == 1:
             await ctx.send("Bad command: you need to input data.")
@@ -118,8 +113,13 @@ class Sheet(commands.Cog):
             await ctx.send("Using the in-use sheet: " + " ".join(self.curr))
         await SheetSet().attendance(ctx, text)
 
+
     @commands.command()
     async def inv(self, ctx):
+        """
+        Shortcut for `!sheet set inventory`.
+        """
+        
         text = ctx.message.content.split(" ")
         text[0] = "inventory"
         if len(text) == 0:
@@ -133,8 +133,7 @@ class Sheet(commands.Cog):
     @commands.command()
     async def plot(self, ctx):
         """
-        !plot [PLOT_TYPE] [DATA_TYPE] [SHEET_NAME]
-        If sheet name is not specified, then 'curr' is used.
+        Shortcute for `!sheet get plot`.
         """
         text = ctx.message.content.split(" ")
         if len(text) == 1:
@@ -151,6 +150,7 @@ class Sheet(commands.Cog):
 
 class SheetGet:
     
+
     """
     FORMATTING: get a/i/curr/SHEET_NAME
     IF LAST TWO THEN SHEET EMBED LINKED IS OUTPUTTED
@@ -171,6 +171,9 @@ class SheetGet:
     plot_line = ["line"]
                   
     async def eval_next(self, ctx, text):
+        """
+        Evaluates the next command and redirects to needed function.
+        """
         del text[0]
         if len(text) == 0:
             await ctx.send("Please further specify what you want.")
@@ -216,6 +219,9 @@ class SheetGet:
 
 
     async def plot(self, ctx, text):
+        """
+        Generates and sends a plot based on commands. The plot is deleted right after use.
+        """
         del text[0]
         if len(text) == 0:
             await ctx.send("Please specify [PLOT_TYPE DATA_TYPE SHEET_NAME]")
@@ -320,37 +326,39 @@ class SheetGet:
             await AlphonseUtils.dm_error(ctx)
 
 
-    async def cat(self, ctx, text):
-        del text[0]
-        if len(text) == 0:
-            await ctx.send("Please specify [DATA_TYPE SHEET_NAME].")
-            return
+    # async def cat(self, ctx, text):
+    #     del text[0]
+    #     if len(text) == 0:
+    #         await ctx.send("Please specify [DATA_TYPE SHEET_NAME].")
+    #         return
 
-        data_type = text.pop(0)
-        if data_type not in self.attendance_commands and data_type not in self.inventory_commands:
-            await ctx.send("Bad data type specification.")
-            return
-        exists = " ".join(text)
-        if exists == None:
-            await ctx.send("Please specify a valid sheet name.")
-            return
+    #     data_type = text.pop(0)
+    #     if data_type not in self.attendance_commands and data_type not in self.inventory_commands:
+    #         await ctx.send("Bad data type specification.")
+    #         return
+    #     exists = " ".join(text)
+    #     if exists == None:
+    #         await ctx.send("Please specify a valid sheet name.")
+    #         return
 
-        data = None
-        if data_type in self.attendance_commands:
-            row_range = "75"
-            pull_range = "Attendance!A1:E" + row_range
-            data = await self.get_data(ctx, exists['id'], pull_range, dim="COLUMNS")
-        elif data_type in self.inventory_commands:
-            row_range = "6"
-            pull_range = "Inventory!A1:B" + row_range
-            data = await self.get_data(ctx, exists['id'], pull_range, dim="ROWS")
+    #     data = None
+    #     if data_type in self.attendance_commands:
+    #         row_range = "75"
+    #         pull_range = "Attendance!A1:E" + row_range
+    #         data = await self.get_data(ctx, exists['id'], pull_range, dim="COLUMNS")
+    #     elif data_type in self.inventory_commands:
+    #         row_range = "6"
+    #         pull_range = "Inventory!A1:B" + row_range
+    #         data = await self.get_data(ctx, exists['id'], pull_range, dim="ROWS")
         
-        types = [i.pop(0) for i in data]
-        
-
+    #     types = [i.pop(0) for i in data]
 
 
     async def list(self, ctx):
+        """
+        Sends a list of current sheets to the chat.
+        """
+        
         sheet_list = drive.files().list(
             q = f"'{parent}' in parents and trashed=False", orderBy='recency'
         ).execute()
@@ -364,6 +372,10 @@ class SheetGet:
 
 
     async def get_link(self, ctx, text):
+        """
+        Sends a link of the named sheet to the chat.
+        """
+        
         exists = find(" ".join(text))
         if exists == None:
             await ctx.send("The requested sheet does not exist.")
@@ -381,8 +393,12 @@ class SheetGet:
 
 class SheetDelete:
 
+
     async def delete(self, ctx, text):
-        #check to make sure it is me calling this
+        """
+        Deletes the named sheet.
+        """
+        
         if not AlphonseUtils.check_if_personal():
             return
         text.pop(0)
@@ -420,6 +436,10 @@ class SheetSet:
     
 
     async def eval_next(self, ctx, text):
+        """
+        Redirects the logic to the next named command.
+        """
+        
         del text[0]
 
         if len(text) == 0:
@@ -440,15 +460,16 @@ class SheetSet:
     
 
     async def attendance(self, ctx, text):
+        """
+        Sets the weapon attendance for the named sheet.
+        """
+        
         del text[0]
         if len(text) == 0:
             await ctx.send("Bad command")
             return
         
-
         curr_date = str(date.today())
-        # if text[0] == "today":
-        #     curr_date = date.today()
 
         for v in [0, 2, 4]:
             if text[v].isnumeric():
@@ -632,8 +653,14 @@ class SheetSet:
 
 class SheetBuild:
 
+
     async def build(self, ctx, text):
-        text.pop(0)
+        """
+        Builds a sheet with the given name. If `fencing` is specified, then the sheet
+        is configured for VTFC use.
+        """
+
+        del text[0]
 
         if len(text) == 0 or text[0] != "fencing":
             new_sheet = await self.make_sheet(ctx, text)
@@ -647,8 +674,11 @@ class SheetBuild:
 
 
     async def make_sheet(self, ctx, text):
+        """
+        Makes a sheet via GoogleSheets.api. With no input, the sheet name is the date.
+        """
+        
         title = str(date.today())
-
         if len(text) > 0:
             title = " ".join(text)
 
@@ -664,7 +694,6 @@ class SheetBuild:
             'mimeType': 'application/vnd.google-apps.spreadsheet',
         }
 
-
         try:
             service = build('sheets', 'v4', credentials=credentials)
             new_sheet = drive.files().create(body=file_metadata).execute()
@@ -675,6 +704,10 @@ class SheetBuild:
 
 
     async def configure_fencing(self, ctx, new_sheet):
+        """
+        Configures the sheet to be for fencing.
+        """
+        
         spreadsheet_id = new_sheet['id']
         
         init_range_att = "Attendance!A1:E1"
