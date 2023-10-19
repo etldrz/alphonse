@@ -66,16 +66,25 @@ The 'sheet' command is used to interface with GoogleSheets directly from Discord
   - '!plot' Takes the same values as the long version of '!sheet get plot'
   - '!inv' Takes the same values as the long version of '!sheet set inventory'
   - '!att' Takes the same values as the long version of '!sheet set attendance'
-  - 
+
 **EXAMPLE COMMANDS:**
+
 '!sheet build fencing Fall 2023'
+
 '!sheet set curr Fall 2023'
+
 '!att 10 epee 9 foil 12 sabre' (alternatively: '!att 10 e 9 f 12 s')
+
 '!inv 3 foil body cord broken' (alternatively: '!inv 3 rowbc broken', where 'rowbc' is short for right-of-way bodycord)
+
 '!sheet get list'
+
 '!sheet delete test confirm'
+
 '!plot pie attendance' (alternatively: '!plot pie a')
+
 '!sheet delete Fall 2023 confirm'
+
 
 
 ### `source`
