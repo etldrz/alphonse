@@ -37,53 +37,62 @@ Takes a date and text that the user would like to be reminded of. On the specifi
 
 FORMAT: 'MM/DD/YYYY USER_TEXT'
 
-### 'sheet'
+### `sheet`
 
-The 'sheet' command is used to interface with GoogleSheets directly from Discord. The general format it follows is '!sheet ACTION ACTION_SPECIFICS'. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:
-- 'build' This creates a new sheet with a user specified name. Optional: specifying 'fencing' before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.
-  - Example call: '!sheet build fencing Spring 2024'
-- 'get' This gets specified data and returns it to the user.
-  - 'list' This has Alphonse send a list of the current sheets inside the parent folder to the channel from which the command was called.
-  - 'plot' This has Alphonse send a plot of the specified data. Only works for sheets build with fencing, or formatted respectively.
-    - 'bar/pie/line' Choosing one of these options generates a barchar, piechart, and line plot respectively. Line plots cannot be called for 'inventory'.
-      - 'attendance/inventory' Data type for the plot.
-        - 'SHEET_NAME' Location of the data.
-  - 'SHEET_NAME' Returns an embeded link of the specified sheet.
-- 'set' Allows the caller to change data.
-  - 'curr' Sets a shortcut for a sheet commonly in use.
-    - 'SHEET_NAME' The sheet name you would like to assign to 'curr'
-  - 'attendance' Sets attendance for the date the command was called on
-    - '# WEAPON_NAME'x3 Inputted values for the numbers attending practice.
-      - 'SHEET_NAME' The sheet you want the attendance to be saved to.
-  - 'inventory' Sets inventory data
-    - '# ITEM_NAME'x1 The item you want to mark as broken or fixed.
-      - 'broken/fixed' If broken is specified, the specified number is added to the value in the sheet. If fixed, that number is removed from the value in the sheet.
-        - 'SHEET_NAME'
-- 'delete' Deletes the specified sheet.
-  - 'SHEET_NAME'
-    - 'confirm' Without adding this to the end, the sheet won't be deleted.
-- For ease, commands commonly called have been given shortcuts. Shortcuts do not need !sheet in front of them. If a shortcutted command takes normally 'SHEET_NAME' at the end, leaving it off here will just apply the command to the in-use sheet (set by '!sheet set curr SHEET_NAME')
-  - '!plot' Takes the same values as the long version of '!sheet get plot'
-  - '!inv' Takes the same values as the long version of '!sheet set inventory'
-  - '!att' Takes the same values as the long version of '!sheet set attendance'
+The `sheet` command is used to interface with GoogleSheets directly from Discord. The general format it follows is `!sheet ACTION ACTION_SPECIFICS`. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:
+
+- `build` This creates a new sheet with a user specified name. Optional: specifying `fencing` before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.
+  - Example call: `!sheet build fencing Spring 2024`
+ 
+- `get` This gets specified data and returns it to the user.
+  - `list` This has Alphonse send a list of the current sheets inside the parent folder to the channel from which the command was called.
+  - `plot` This has Alphonse send a plot of the specified data. Only works for sheets build with fencing, or formatted respectively.
+    - `bar/pie/line` Choosing one of these options generates a barchar, piechart, and line plot respectively. Line plots cannot be called for `inventory`.
+      - `attendance/inventory` Data type for the plot.
+        - `SHEET_NAME` Location of the data.
+  
+  - `SHEET_NAME` Returns an embeded link of the specified sheet.
+ 
+    
+- `set` Allows the caller to change data.
+  - `curr` Sets a shortcut for a sheet commonly in use.
+    - `SHEET_NAME` The sheet name you would like to assign to `curr`
+      
+  - `attendance` Sets attendance for the date the command was called on
+    - `# WEAPON_NAME`x3 Inputted values for the numbers attending practice.
+      - `SHEET_NAME` The sheet you want the attendance to be saved to.
+        
+  - `inventory` Sets inventory data
+    - `# ITEM_NAME`x1 The item you want to mark as broken or fixed.
+      - `broken/fixed` If broken is specified, the specified number is added to the value in the sheet. If fixed, that number is removed from the value in the sheet.
+        - `SHEET_NAME`
+          
+- `delete` Deletes the specified sheet.
+  - `SHEET_NAME`
+    - `confirm` Without adding this to the end, the sheet won't be deleted.
+      
+- For ease, commands commonly called have been given shortcuts. Shortcuts do not need !sheet in front of them. If a shortcutted command takes normally `SHEET_NAME` at the end, leaving it off here will just apply the command to the in-use sheet (set by `!sheet set curr SHEET_NAME`)
+  - `!plot` Takes the same values as the long version of `!sheet get plot`
+  - `!inv` Takes the same values as the long version of `!sheet set inventory`
+  - `!att` Takes the same values as the long version of `!sheet set attendance`
 
 **EXAMPLE COMMANDS:**
 
-'!sheet build fencing Fall 2023'
+`!sheet build fencing Fall 2023`
 
-'!sheet set curr Fall 2023'
+`!sheet set curr Fall 2023`
 
-'!att 10 epee 9 foil 12 sabre' (alternatively: '!att 10 e 9 f 12 s')
+`!att 10 epee 9 foil 12 sabre` (alternatively: `!att 10 e 9 f 12 s`)
 
-'!inv 3 foil body cord broken' (alternatively: '!inv 3 rowbc broken', where 'rowbc' is short for right-of-way bodycord)
+`!inv 3 foil body cord broken` (alternatively: `!inv 3 rowbc broken`, where `rowbc` is short for right-of-way bodycord)
 
-'!sheet get list'
+`!sheet get list`
 
-'!sheet delete test confirm'
+`!sheet delete test confirm`
 
-'!plot pie attendance' (alternatively: '!plot pie a')
+`!plot pie attendance` (alternatively: `!plot pie a`)
 
-'!sheet delete Fall 2023 confirm'
+`!sheet delete Fall 2023 confirm`
 
 
 
