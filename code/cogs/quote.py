@@ -16,9 +16,9 @@ class Wisdom(commands.Cog):
 
     @commands.command()
     async def wisdom(self, ctx):
-    """
-    RENAME ME TO MOOD AND SYNC UP MOOD W ME.
-    """
+        """
+        RENAME ME TO MOOD AND SYNC UP MOOD W ME.
+        """
         with open("data/newquote.txt", mode="r") as f:
             data = f.read().split(self.break_command)
             chosen = random.choice(data)

@@ -18,8 +18,10 @@ def check_if_personal(ctx):
     return ctx.message.author.id == personal_id
 
 
-async def dm_error(ctx):
-    await ctx.send("uh oh")
+async def dm_error(ctx, message="uh oh"):
+    message += " via user call: '" + ctx.message.content + "'"
+    me = await get_member(ctx, str(personal_id))
+    await me.send(message)
 
 async def get_member(ctx, target):
     """
@@ -31,10 +33,12 @@ async def get_member(ctx, target):
 
     person = None
     for m in ctx.guild.members:
-        if m.name == target or m.nick == target or m.global_name == target or m.id == int(target):
+        if m.name == target or m.nick == target or m.global_name == target \
+           or (target.isnumeric() and m.id == int(target)):
             person = m
             break
     if person is None:
-        await personal_id.send("The target: " + target + " could not be found.")
+        await dm_error(ctx, message="The person could not be found::" \
+                       "\n 'alphonse_utils.get_member'")
 
     return person

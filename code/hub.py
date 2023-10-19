@@ -11,7 +11,7 @@ from discord.ext import commands
 
 
 INTENTS = discord.Intents(messages=True, guilds=True, members=True,
-                          message_content=True, dm_messages=True)
+                          message_content=True, dm_messages=True, reactions=True)
 
 
 
