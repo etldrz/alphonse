@@ -65,8 +65,7 @@ The 'sheet' command is used to interface with GoogleSheets directly from Discord
 - For ease, commands commonly called have been given shortcuts. Shortcuts do not need !sheet in front of them. If a shortcutted command takes normally 'SHEET_NAME' at the end, leaving it off here will just apply the command to the in-use sheet (set by '!sheet set curr SHEET_NAME')\n
   - '!plot' Takes the same values as the long version of '!sheet get plot'\n
   - '!inv' Takes the same values as the long version of '!sheet set inventory'\n
-  - '!att' Takes the same values as the long version of '!sheet set attendance'\n
-
+  - '!att' Takes the same values as the long version of '!sheet set attendance'\n\n
 **EXAMPLE COMMANDS:**\n
 '!sheet build fencing Fall 2023'\n
 '!sheet set curr Fall 2023'\n
