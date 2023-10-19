@@ -37,21 +37,46 @@ Takes a date and text that the user would like to be reminded of. On the specifi
 
 FORMAT: 'MM/DD/YYYY USER_TEXT'
 
-### `sheet.build`
+### 'sheet'
 
-Creates a Google sheet and puts it in specific parent folder. If text is given, that is the sheet title. If no text is given, the time of the creation is used as the title.
+The 'sheet' command is used to interface with GoogleSheets directly from Discord. The general format it follows is '!sheet ACTION ACTION_SPECIFICS'. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:\n\n
+- 'build' This creates a new sheet with a user specified name. Optional: specifying 'fencing' before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.\n
+  - Example call: '!sheet build fencing Spring 2024'\n\n
+- 'get' This gets specified data and returns it to the user.\n
+  - 'list' This has Alphonse send a list of the current sheets inside the parent folder to the channel from which the command was called.\n
+  - 'plot' This has Alphonse send a plot of the specified data. Only works for sheets build with fencing, or formatted respectively.\n
+    - 'bar/pie/line' Choosing one of these options generates a barchar, piechart, and line plot respectively. Line plots cannot be called for 'inventory'.\n
+      - 'attendance/inventory' Data type for the plot.\n
+        - 'SHEET_NAME' Location of the data.\n
+  - 'SHEET_NAME' Returns an embeded link of the specified sheet.\n\n
+- 'set' Allows the caller to change data.\n
+  - 'curr' Sets a shortcut for a sheet commonly in use.\n
+    - 'SHEET_NAME' The sheet name you would like to assign to 'curr'\n
+  - 'attendance' Sets attendance for the date the command was called on\n
+    - '# WEAPON_NAME'x3 Inputted values for the numbers attending practice.\n
+      - 'SHEET_NAME' The sheet you want the attendance to be saved to.\n
+  - 'inventory' Sets inventory data\n
+    - '# ITEM_NAME'x1 The item you want to mark as broken or fixed.\n
+      - 'broken/fixed' If broken is specified, the specified number is added to the value in the sheet. If fixed, that number is removed from the value in the sheet.\n
+        - 'SHEET_NAME'\n\n
+- 'delete' Deletes the specified sheet.\n
+  - 'SHEET_NAME'\n
+    - 'confirm' Without adding this to the end, the sheet won't be deleted.\n\n
+- For ease, commands commonly called have been given shortcuts. Shortcuts do not need !sheet in front of them. If a shortcutted command takes normally 'SHEET_NAME' at the end, leaving it off here will just apply the command to the in-use sheet (set by '!sheet set curr SHEET_NAME')\n
+  - '!plot' Takes the same values as the long version of '!sheet get plot'\n
+  - '!inv' Takes the same values as the long version of '!sheet set inventory'\n
+  - '!att' Takes the same values as the long version of '!sheet set attendance'\n
 
-### `sheet.delete`
+**EXAMPLE COMMANDS:**\n
+'!sheet build fencing Fall 2023'\n
+'!sheet set curr Fall 2023'\n
+'!att 10 epee 9 foil 12 sabre' (alternatively: '!att 10 e 9 f 12 s')\n
+'!inv 3 foil body cord broken' (alternatively: '!inv 3 rowbc broken', where 'rowbc' is short for right-of-way bodycord)\n
+'!sheet get list'\n
+'!sheet delete test confirm'\n
+'!plot pie attendance' (alternatively: '!plot pie a')\n
+'!sheet delete Fall 2023 confirm'\n
 
-Deletes a specific Google sheet. The text the user puts in is taken as the title of the sheet the user wants deleted. Type the word 'confirm' at the end of the title to confirm your command.
-
-### `sheet.get`
-
-Embeds a url link to the current in-use sheet.
-
-### `sheet.list`
-
-Returns a list of every sheet in the parent folder.
 
 ### `source`
 
