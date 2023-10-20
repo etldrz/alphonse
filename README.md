@@ -13,35 +13,16 @@
 
 Every command is prefecaed by '!'. Information on each command can be found inside Discord by typing '!help COMMAND_NAME'
 
-### `mood`
+### `MostDangerousGame`
 
-mood will generate a randomly chosen emote from the list of emotes specific to the server the command is called on.
-
-### `most.dangerous.game` (VTFC specific)
-
-Runs a contest among all members in the server. Whenever someone posts an image into the 'fencer-spotted' channel, a point will be awarded to them. At the end of the contest, Alphonse will announce the winner of the contest.
-
-Takes a potential input representing the amount of hours the contest will run for. If no number is given, the runtime will be 48.
-
-### `quote`
-
-quote will return a randomly selected quote from a database that Al has access to.
-
-### `quote.submit`
-
-Takes a line of text as a parameter, that text will be logged for review to submission to the file that `quote` uses. The name of the user who submitted it will be saved as well.
-
-### `remind.me`
-
-Takes a date and text that the user would like to be reminded of. On the specified date at 9am, Alphonse will post the reminder and ping the user in the channel the command was originally called in.
-
-FORMAT: 'MM/DD/YYYY USER_TEXT'
+## 
 
 ### `sheet`
 
 The `sheet` command is used to interface with GoogleSheets directly from Discord. The general format it follows is `!sheet ACTION ACTION_SPECIFICS`. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:
 
-- `build` This creates a new sheet with a user specified name. Optional: specifying `fencing` before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.
+## `build` 
+This creates a new sheet with a user specified name. Optional: specifying `fencing` before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.
   - `SHEET_NAME` The name you would like to give your newly created sheet. 
 
 - `get` This gets specified data and returns it to the user.
