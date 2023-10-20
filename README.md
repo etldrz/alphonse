@@ -9,7 +9,7 @@
 - Make the date input more better for SheetBuild.attendance. Also make shortcut methods !broke and !atten, as well as a way to rollback the data (if date is the same use only the most previous)
 
 
-## Commands:
+# Commands:
 
 Every command is prefecaed by '!'. Information on each command can be found inside Discord by typing '!help COMMAND_NAME'
 
@@ -55,13 +55,13 @@ The `sheet` command is used to interface with GoogleSheets directly from Discord
   - `SHEET_NAME`
     - `confirm` Without adding this to the end, the sheet won't be deleted.
       
-- ### Shortcuts
+- ### SHORTCUTS:
   For ease, commands commonly called have been given shortcuts. Shortcuts do not need !sheet in front of them. If a shortcutted command takes normally `SHEET_NAME` at the end, leaving it off here will just apply the command to the in-use sheet (set by `!sheet set curr SHEET_NAME`)
   - `!plot` Takes the same values as the long version of `!sheet get plot`
   - `!inv` Takes the same values as the long version of `!sheet set inventory`
   - `!att` Takes the same values as the long version of `!sheet set attendance`
 
-- ### **EXAMPLE COMMANDS:**
+- ### EXAMPLE COMMANDS:
 
   - `!sheet build fencing Fall 2023`
 
