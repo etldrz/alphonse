@@ -36,7 +36,8 @@ The `sheet` command is used to interface with GoogleSheets directly from Discord
   - `SHEET_NAME` Returns an embeded link to the specified sheet.
  
     
-- ### `set`<br>Allows the caller to change data.
+- ### `set`
+  Allows the caller to change data.
   - `curr` Sets a shortcut for a sheet commonly in use.
     - `SHEET_NAME` The sheet name you would like to assign to `curr`
       
@@ -49,16 +50,18 @@ The `sheet` command is used to interface with GoogleSheets directly from Discord
       - `broken/fixed` If broken is specified, the specified number is added to the value in the sheet. If fixed, that number is removed from the value in the sheet.
         - `SHEET_NAME` The sheet you want the data to be saved to. 
           
-- ### `delete`<br>Deletes the specified sheet.
+- ### `delete`
+  Deletes the specified sheet.
   - `SHEET_NAME`
     - `confirm` Without adding this to the end, the sheet won't be deleted.
       
-- ### Shortcuts<br>For ease, commands commonly called have been given shortcuts. Shortcuts do not need !sheet in front of them. If a shortcutted command takes normally `SHEET_NAME` at the end, leaving it off here will just apply the command to the in-use sheet (set by `!sheet set curr SHEET_NAME`)
+- ### Shortcuts
+  For ease, commands commonly called have been given shortcuts. Shortcuts do not need !sheet in front of them. If a shortcutted command takes normally `SHEET_NAME` at the end, leaving it off here will just apply the command to the in-use sheet (set by `!sheet set curr SHEET_NAME`)
   - `!plot` Takes the same values as the long version of `!sheet get plot`
   - `!inv` Takes the same values as the long version of `!sheet set inventory`
   - `!att` Takes the same values as the long version of `!sheet set attendance`
 
-**EXAMPLE COMMANDS:**
+- ### **EXAMPLE COMMANDS:**
 
 `!sheet build fencing Fall 2023`
 
