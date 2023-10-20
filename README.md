@@ -83,7 +83,7 @@ Further variable shortcuts exist, following the pattern given directly above.
 
 
 
-### `source`
+## `source`
 
 Reterns an embedded link to Alphonse's GitHub homepage (here!).
 
