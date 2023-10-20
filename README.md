@@ -21,10 +21,12 @@ Every command is prefecaed by '!'. Information on each command can be found insi
 
 The `sheet` command is used to interface with GoogleSheets directly from Discord. The general format it follows is `!sheet ACTION ACTION_SPECIFICS`. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:
 
-- ### `build`<br>This creates a new sheet with a user specified name. Optional: specifying `fencing` before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.
+- ### `build`
+  This creates a new sheet with a user specified name. Optional: specifying `fencing` before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.
   - `SHEET_NAME` The name you would like to give your newly created sheet. 
 
-- ### `get` <br>This gets specified data and returns it to the user.
+- ### `get`
+  This gets specified data and returns it to the user.
   - `list` This has Alphonse send a list of the current sheets inside the parent folder to the channel from which the command was called.
   - `plot` This has Alphonse send a plot of the specified data. Only works for sheets build with fencing, or formatted respectively.
     - `bar/pie/line` Choosing one of these options generates a barchar, piechart, and line plot respectively. Line plots cannot be called for `inventory`.
