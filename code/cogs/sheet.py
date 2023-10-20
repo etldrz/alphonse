@@ -145,7 +145,6 @@ class Sheet(commands.Cog):
             text = text + self.curr
             await ctx.send("Using the in-use sheet: " + " ".join(self.curr))
         await SheetGet().plot(ctx, text)
-        
 
 
 class SheetGet:
@@ -228,21 +227,25 @@ class SheetGet:
             return
 
         plot_type = text[0]
-        if plot_type not in self.plot_pie and plot_type not in self.plot_bar and plot_type not in self.plot_line:
+        if plot_type not in self.plot_pie \
+           and plot_type not in self.plot_bar \
+           and plot_type not in self.plot_line:
             await ctx.send("Please specify PLOT_TYPE more better. Allowed responses are '"\
                            + ", ".join(self.plot_pie) + "' and '" + ", ".join(self.plot_bar) + "'.")
             return
         del text[0]
 
         data_type = text[0]
-        if data_type not in self.attendance_commands and data_type not in self.inventory_commands:
+        if data_type not in self.attendance_commands \
+           and data_type not in self.inventory_commands:
             await ctx.send("Bad specification of data type. Allowed responses are '"\
                            + ", ".join(self.attendance_commands) + "' and '" +\
                            ", ".join(self.inventory_commands) + "'.")
             return
         del text[0]
 
-        if plot_type in self.plot_line and data_type in self.inventory_commands:
+        if plot_type in self.plot_line \
+           and data_type in self.inventory_commands:
             await ctx.send("Line plot is not allowed for inventory.")
             return
         
@@ -310,12 +313,15 @@ class SheetGet:
         elif plot_type in self.plot_line:
             [i.pop(0) for i in data]
             dates = [i.strftime('%b-%d') for i in [datetime.strptime(j, format) for j in data[0]]]
+            step_size = int(len(dates) / 3)
             total_att = [int(i) for i in data[-1]]
             plt.figure(figsize=(7,5))
             plt.plot(dates, total_att)
-            plt.title(label="Total attendance for " + exists['name'])
+            plt.title(label="Nightly attendance for " + exists['name'])
             plt.xlabel(None)
-            plt.ylabel("Total Attendance")
+            plt.ylabel("attendance")
+            plt.xticks([dates[0], dates[step_size*1], dates[step_size*2], dates[-1]])
+
 
         plt.savefig(loc)
         await ctx.send(file=discord.File(loc))
@@ -399,7 +405,7 @@ class SheetDelete:
         Deletes the named sheet.
         """
         
-        if not AlphonseUtils.check_if_personal():
+        if not AlphonseUtils.check_if_personal(ctx):
             return
         text.pop(0)
         if len(text) == 1 or text[len(text) - 1].lower() != "confirm":
@@ -417,7 +423,7 @@ class SheetDelete:
 
         drive.files().delete(fileId=file_id).execute()
 
-        AlphonseUtils.affirmation()
+        await AlphonseUtils.affirmation(ctx)
 
 
 class SheetSet:
@@ -535,7 +541,7 @@ class SheetSet:
             service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
             ).execute()
-            AlphonseUtils.affirmation(ctx)
+            await AlphonseUtils.affirmation(ctx)
         except HttpError as err:
             await AlphonseUtils.dm_error(ctx)
 
@@ -632,7 +638,7 @@ class SheetSet:
             service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, range=sheet_range, body=body, valueInputOption="USER_ENTERED"
             ).execute()
-            AlphonseUtils.affirmation(ctx)
+            await AlphonseUtils.affirmation(ctx)
         except HttpError as err:
             await AlphonseUtils.dm_error(ctx)
          
@@ -648,7 +654,7 @@ class SheetSet:
             await ctx.send("There is no sheet by that name within the parent directory.")
             return
         Sheet.curr = exists['name'].split(" ")
-        AlphonseUtils.affirmation(ctx)
+        await AlphonseUtils.affirmation(ctx)
         
 
 class SheetBuild:
@@ -664,7 +670,7 @@ class SheetBuild:
 
         if len(text) == 0 or text[0] != "fencing":
             new_sheet = await self.make_sheet(ctx, text)
-            AlphonseUtils.affirmation(ctx)
+            await AlphonseUtils.affirmation(ctx)
             return
         elif text[0] == "fencing":
             text.pop(0)
@@ -769,7 +775,7 @@ class SheetBuild:
             await AlphonseUtils.dm_error(ctx)
             return
 
-        AlphonseUtils.affirmation(ctx)
+        await AlphonseUtils.affirmation(ctx)
 
        
 async def setup(bot):

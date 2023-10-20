@@ -37,12 +37,16 @@ class Wisdom(commands.Cog):
             reply = await ctx.channel.fetch_message(ctx.message.reference.message_id)
             quote = reply.content
             author = reply.author.nick
+            if author is None:
+                author = reply.author.global_name
         else:
             quote = ctx.message.content.replace(ctx.prefix + ctx.command.name, "")
             author = ctx.message.author.nick
+            if author is None:
+                author = ctx.message.author.global_name
 
         with open("data/newquote.txt", mode="a") as f:
-            f.write(quote + "\n\t -" + author + "\n" + self.break_command)
+            f.write(self.break_command + quote + "\n\t -" + author + "\n")
         await AlphonseUtils.affirmation(ctx)
 
 async def setup(bot):

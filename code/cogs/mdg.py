@@ -4,10 +4,6 @@ from datetime import datetime, timedelta, time
 from zoneinfo import ZoneInfo
 from discord.ext import commands, tasks
 
-
-channel_id = 1153007466297172129 #lackluster-bluster
-
-
 class MostDangerousGame(commands.Cog):
     """
     When '!most.dangerous.game TIME' is called, this class tracks every instance of a picture
@@ -23,6 +19,7 @@ class MostDangerousGame(commands.Cog):
                      #once when starting and once after time has elapsed.
     previous_results = dict()
     result_message_id = 0
+    contest_channel = None
 
     def __init__(self, bot):
         self.bot = bot
@@ -123,10 +120,8 @@ class MostDangerousGame(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
 
-        channel = self.bot.get_channel(channel_id)
-        
         if not self.contest.is_running() \
-           or message.channel.id != channel_id \
+           or message.channel.id != self.contest_channel.id \
                or message.author.id == self.bot.user.id:
             return
 
@@ -137,8 +132,34 @@ class MostDangerousGame(commands.Cog):
                     await message.add_reaction(AlphonseUtils.affirmative)
 
 
-    @commands.command()
-    async def kill(self, ctx):
+    @commands.command(name="change.channel")
+    async def change_channel(self, ctx):
+        if not AlphonseUtils.check_if_personal(ctx):
+            return
+
+        text = ctx.message.content.split(" ")
+        del text[0]
+
+        if len(text) == 0:
+            await ctx.send("Bad call.")
+            return
+
+        server_name = " ".join(text)
+
+        channels = ctx.guild.text_channels
+
+        for c in channels:
+            if c.name == server_name:
+                self.contest_channel = c
+                await AlphonseUtils.affirmation(ctx)
+                return
+
+        await AlphonseUtils.dm_error(ctx, message="The channel does not exist in the guild: " + ctx.guild.name\
+                                     + "\n 'mdg.change_channel'")
+
+
+    @commands.command(name="kill.contest")
+    async def kill_contest(self, ctx):
         """
         Ends the current contest.
         """
@@ -227,14 +248,14 @@ class MostDangerousGame(commands.Cog):
         
         if self.starting:
             message = "The contest to spot as many of your peers as possible has just begun. Each picture "\
-                "that you post into this channel will automaticall earn you a point; the results will be "\
+                "that you post into this channel will automatically earn you a point; the results will be "\
                 "released at the end of the contest. "\
                 "You have " + str(self.time) + " hours to spot as many fencers as possible.\n\n"\
                 "Since all I can do is notice that an image has been "\
                 "posted, please don't post images to this channel unless they have a fencer in them. \n\n\n"\
                 "Good hunting."
-            channel = self.bot.get_channel(channel_id)
-            await channel.send(message)
+            
+            await self.contest_channel.send(message)
             self.starting = False
             return
 
