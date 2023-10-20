@@ -63,23 +63,23 @@ The `sheet` command is used to interface with GoogleSheets directly from Discord
 
 - ### **EXAMPLE COMMANDS:**
 
-`!sheet build fencing Fall 2023`
+  - `!sheet build fencing Fall 2023`
 
-`!sheet set curr Fall 2023`
+  - `!sheet set curr Fall 2023`
 
-`!att 10 epee 9 foil 12 sabre` (alternatively: `!att 10 e 9 f 12 s`)
+  - `!att 10 epee 9 foil 12 sabre` (alternatively: `!att 10 e 9 f 12 s`)
 
-`!inv 3 foil body cord broken` (alternatively: `!inv 3 rowbc broken`, where `rowbc` is short for right-of-way bodycord)
+  - `!inv 3 foil body cord broken` (alternatively: `!inv 3 rowbc broken`, where `rowbc` is short for right-of-way bodycord)
 
-`!sheet get list`
+  - `!sheet get list`
 
-`!sheet delete test confirm`
+  - `!sheet delete test confirm`
 
-`!plot pie attendance` (alternatively: `!plot pie a`)
+  - `!plot pie attendance` (alternatively: `!plot pie a`)
 
-`!sheet delete Fall 2023 confirm`
+  - `!sheet delete Fall 2023 confirm`
 
-Further variable shortcuts exist, following the pattern given directly above.
+Further shortcuts for named variables exist, following the pattern given directly above, i.e. `epee` is the same as `e`, `epee bodycord` is the same as `ebc`, and `maskcord` is the same as `mc`.
 
 
 
