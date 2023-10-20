@@ -35,7 +35,7 @@ Removes a single pont from the named user.
 
 ## `sheet`
 
-The `sheet` command is used to interface with GoogleSheets directly from Discord. The general format it follows is `!sheet ACTION ACTION_SPECIFICS`. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:
+The `sheet` command are used to interface with GoogleSheets directly from Discord. The general format it follows is `!sheet ACTION ACTION_SPECIFICS`. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:
 
 - ### `build`
   This creates a new sheet with a user specified name. Optional: specifying `fencing` before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.
@@ -70,6 +70,10 @@ The `sheet` command is used to interface with GoogleSheets directly from Discord
   Deletes the specified sheet.
   - `SHEET_NAME`
     - `confirm` Without adding this to the end, the sheet won't be deleted.
+   
+- ### `flowchart`
+
+  Called without `!sheet` before it; links to the `sheet` section of the README.
       
 - ### SHORTCUTS:
   For ease, commands commonly called have been given shortcuts. Shortcuts do not need !sheet in front of them. If a shortcutted command takes normally `SHEET_NAME` at the end, leaving it off here will just apply the command to the in-use sheet (set by `!sheet set curr SHEET_NAME`)
@@ -95,11 +99,7 @@ The `sheet` command is used to interface with GoogleSheets directly from Discord
 
   - `!sheet delete Fall 2023 confirm`
 
-Further shortcuts for named variables exist, following the pattern given directly above, i.e. `epee` is the same as `e`, `epee bodycord` is the same as `ebc`, and `maskcord` is the same as `mc`.
-
-## `source`
-
-Reterns an embedded link to Alphonse's GitHub homepage (here!).
+Further shortcuts for named variables exist, following the pattern given directly above; i.e. `epee` is the same as `e`, `epee bodycord` is the same as `ebc`, and `maskcord` is the same as `mc`.
 
 ## `Wisdom`
 
@@ -117,3 +117,6 @@ Alphonse saves a quote, and the user supplying the quote, to a text file which `
 
 When this command is called, Alphonse will create a new role named 'tournament' and add anyone who reacts to the message to the role. This role can be mentioned via '@', and will allow for only users going to the tournament to be pinged, instead of having to use '@everyone' loosely.
 
+## `source`
+
+Reterns an embedded link to Alphonse's GitHub homepage (here!).
