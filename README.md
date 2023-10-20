@@ -1,13 +1,4 @@
-# A man walks down the street<br>it's a street in a strange world
-
-## TODO:
-- move sensitive info out of the main.py
-- make it so that quote.submit will record responses. if it does record a response, credit the quote to the original message
-- Make Al post rules that go along with most.dangerous.game when it is called. Make sub-commands (or external link) so that people can see their own scores.
-- Make a command accessible only by me that will kill every active process.
-- Make sheet.build with no name not get too specific with the time
-- Make the date input more better for SheetBuild.attendance. Also make shortcut methods !broke and !atten, as well as a way to rollback the data (if date is the same use only the most previous)
-
+# [A man walks down the street<br>it's a street in a strange world](https://www.youtube.com/watch?v=OMbfT3Wppjo)
 
 # Commands:
 
