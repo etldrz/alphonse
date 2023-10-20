@@ -15,7 +15,23 @@ Every command is prefecaed by '!'. Information on each command can be found insi
 
 ## `MostDangerousGame`
 
-## 
+This set of commands revolves around a contest for the VTFC Discord channel #fencer-spotted. Once the contest begins, guild members can accrue points by posting images into #fencer-spotted; once the contest is over the winner and runners up will be announced.
+
+- ### `friendship.killer`
+
+To be immediatly followed by a time length (in hours) that the contest will run for. Only opperates in a specific channel, initially #fencer-spotted, but can be altered by the command immediatly below.
+
+- ### `change.server`
+  
+When immediatly followed by a valid server name within the guild where the command is being called, that server will become the new arena for `friendship.killer`
+
+- ### `add`
+
+Adds a single point to the named user.
+
+- ### `dep`
+
+Removes a single pont from the named user.
 
 ## `sheet`
 
@@ -81,10 +97,23 @@ The `sheet` command is used to interface with GoogleSheets directly from Discord
 
 Further shortcuts for named variables exist, following the pattern given directly above, i.e. `epee` is the same as `e`, `epee bodycord` is the same as `ebc`, and `maskcord` is the same as `mc`.
 
-
-
 ## `source`
 
 Reterns an embedded link to Alphonse's GitHub homepage (here!).
 
+## `Wisdom`
+
+This deals with retrieving and submitting quotes from users.
+
+- ### `wisdom`
+
+Alphonse prints out a randomly selected quote from the collection he has access to.
+
+- ### `quote.submit`
+
+Alphonse saves a quote, and the user supplying the quote, to a text file which `wisdom` pulls from. Quotes can be submitted either by typing something in the same message that the command is called in, or by calling the command while replying to a message.
+
+## `tournament`
+
+When this command is called, Alphonse will create a new role named 'tournament' and add anyone who reacts to the message to the role. This role can be mentioned via '@', and will allow for only users going to the tournament to be pinged, instead of having to use '@everyone' loosely.
 
