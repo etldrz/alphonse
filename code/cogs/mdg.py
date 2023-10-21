@@ -235,6 +235,8 @@ class MostDangerousGame(commands.Cog):
             user_time = int(text[0])
             delta = 0 if (user_time - self.time < 0) else (user_time - self.time)
             self.time += delta
+            await ctx.send("triggered")
+            await ctx.send(delta)
 
         self.scoreboard.clear() #resets from previous contests
 
