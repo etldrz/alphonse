@@ -96,11 +96,11 @@ class MostDangerousGame(commands.Cog):
                 self.result_message_id = results.id
                 return
             else:
-                results = await ctx.send(message)
+                results = await self.contest_channel.send(message)
                 return
 
         self.result_message_id = 0
-        await ctx.send(message)
+        await self.contest_channel.send(message)
         
         
     @commands.Cog.listener()
