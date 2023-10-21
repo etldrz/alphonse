@@ -24,8 +24,7 @@ class Tournament(commands.Cog):
         tournament_exists = False
         for role in current_roles:
             if role.name == "tournament":
-                self.active_role = role
-                return
+                role.delete()
 
         guild = ctx.guild
         self.active_role = await guild.create_role(
