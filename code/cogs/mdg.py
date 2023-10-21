@@ -19,11 +19,13 @@ class MostDangerousGame(commands.Cog):
                      #once when starting and once after time has elapsed.
     previous_results = dict()
     result_message_id = 0
-    contest_channel = None
+
 
     def __init__(self, bot):
         self.bot = bot
         self.scoreboard = {AlphonseUtils.personal_id: 3, 1150550371123593287: 1, 1150523334094753832: 2}
+        self.contest_channel = self.bot.get_channel(1164419805525323908)
+
 
     def add_point(self, user_id, count):
         """
@@ -57,7 +59,7 @@ class MostDangerousGame(commands.Cog):
             
         self.previous_results = dict(sorted(self.previous_results.items(), key=lambda x:x[1], reverse=True))
 
-        message = "The contest has ended! Here are top players: "
+        message = "The contest has ended! Here are top players "
         count = 0
         gold = []
         runners_up = []
@@ -72,11 +74,12 @@ class MostDangerousGame(commands.Cog):
             else:
                 runners_up.append(i)
                 count += 1
-        
-        if len(gold) == 0 or gold[0][1] <= 0:
+
+        if len(gold) == 0 or int(gold[0][1]) <= 0:
             await AlphonseUtils.dm_error(current_ctx,
                                          message="The #fencer-spotted contest either had a population of zero, "\
-                                         "or the winner(s) had less-than or equal-to zero points.\n")
+                                         "or the winner(s) had less-than or equal-to zero points::"\
+                                         + "\n'MostDangerousGame.on_end'")
             return
 
         message += "\nIn first place:\n"
@@ -155,7 +158,7 @@ class MostDangerousGame(commands.Cog):
                 return
 
         await AlphonseUtils.dm_error(ctx, message="The channel does not exist in the guild: " + ctx.guild.name\
-                                     + "\n 'mdg.change_channel'")
+                                     + "::\n 'MostDangerousGame.change_channel'")
 
 
     @commands.command(name="kill.contest")
@@ -180,7 +183,7 @@ class MostDangerousGame(commands.Cog):
         del text[0]
         if len(text) == 0:
             await AlphonseUtils.dm_error(ctx, message="No member was specified::" \
-                                           "\n 'mdg.add'")
+                                           "\n 'MostDangerousGame.add'")
             return
         
         name = " ".join(text)
@@ -203,7 +206,7 @@ class MostDangerousGame(commands.Cog):
         del text[0]
         if len(text) == 0:
             await AlphonseUtils.dm_error(ctx, message="No member was specified::" \
-                                         "\n 'mdg.dep'")
+                                         "\n 'MostDangerousGame.dep'")
             return
         name = " ".join(text)
         person = await AlphonseUtils.get_member(ctx, name)

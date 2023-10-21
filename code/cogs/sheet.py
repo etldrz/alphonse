@@ -4,8 +4,7 @@ import os
 import seaborn as sns
 import alphonse_utils as AlphonseUtils
 from discord.ext import commands
-from datetime import date
-from datetime import datetime
+from datetime import date, datetime
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.auth.transport.requests import Request
@@ -77,10 +76,11 @@ class Sheet(commands.Cog):
         """
         Command that lets Alphonse know you're dealing with sheets. See `!flowchart` for more details.
         """
+
         text = ctx.message.content.split(" ")
         del text[0]
         if len(text) == 0:
-            await ctx.send("Bad command")
+            await ctx.send("Bad command.")
             return
 
         match text[0]:
