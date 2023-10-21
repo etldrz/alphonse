@@ -26,7 +26,7 @@ Removes a single pont from the named user.
 
 ## `sheet`
 
-The `sheet` command are used to interface with GoogleSheets directly from Discord. The general format it follows is `!sheet ACTION ACTION_SPECIFICS`. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:
+The `sheet` commands are used to interface with GoogleSheets directly from Discord. The general format it follows is `!sheet ACTION ACTION_SPECIFICS`. All sheets Alphonse has access to are in a specific parent folder inside Evan's GoogleDrive. The main actions are as follows:
 
 - ### `build`
   This creates a new sheet with a user specified name. Optional: specifying `fencing` before the name tells Alphonse to build a sheet formatted for VTFC data collection purposes (having tabs for inventory and for fencing, and prefilled squares). Several commands can only be used with this fencing format.
