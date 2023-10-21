@@ -110,4 +110,8 @@ When this command is called, Alphonse will create a new role named 'tournament' 
 
 ## `source`
 
-Reterns an embedded link to Alphonse's GitHub homepage (here!).
+Returns an embedded link to Alphonse's GitHub homepage (here!).
+
+## `new.members`
+
+Gets the roles of any member who joined past the start date of whatever semester the command is called during (Fall or Spring). If the command is called in the middle of December or in the summer, the bot assumes the most recent semester is to be accessed.
