@@ -108,10 +108,10 @@ Alphonse saves a quote, and the user supplying the quote, to a text file which `
 
 When this command is called, Alphonse will create a new role named 'tournament' and add anyone who reacts to the message to the role. This role can be mentioned via '@', and will allow for only users going to the tournament to be pinged, instead of having to use '@everyone' loosely.
 
-## `source`
-
-Returns an embedded link to Alphonse's GitHub homepage (here!).
-
 ## `new.members`
 
 Gets the roles of any member who joined past the start date of whatever semester the command is called during (Fall or Spring). If the command is called in the middle of December or in the summer, the bot assumes the most recent semester is to be accessed.
+
+## `source`
+
+Returns an embedded link to Alphonse's GitHub homepage (here!).
