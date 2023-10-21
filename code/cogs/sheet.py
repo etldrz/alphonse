@@ -19,7 +19,7 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive.metadata',
           'https://www.googleapis.com/auth/drive.file']
 
-SERVICE_ACCOUNT_FILE = 'data/sensitive/alphonse-key.json'
+SERVICE_ACCOUNT_FILE = 'code/data/sensitive/alphonse-key.json'
 
 credentials = service_account.Credentials.from_service_account_file(
         SERVICE_ACCOUNT_FILE, scopes=SCOPES)
