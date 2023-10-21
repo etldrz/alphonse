@@ -172,8 +172,8 @@ class MostDangerousGame(commands.Cog):
         self.contest.cancel()
 
     
-    @commands.command()
-    async def add(self, ctx):
+    @commands.command(name="add.point")
+    async def add_point(self, ctx):
         """
         Adds a point to a named user.
         """
@@ -194,10 +194,10 @@ class MostDangerousGame(commands.Cog):
         await AlphonseUtils.affirmation(ctx)
         
 
-    @commands.command()
-    async def dep(self, ctx):
+    @commands.command(name="rem.point")
+    async def rem_point(self, ctx):
         """
-        Depricates a point from the named user.
+        Removes a point from the named user.
         """
 
         if not AlphonseUtils.check_if_personal(ctx):
