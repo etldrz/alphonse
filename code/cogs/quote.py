@@ -45,7 +45,7 @@ class Wisdom(commands.Cog):
             if author is None:
                 author = ctx.message.author.global_name
 
-        with open("data/newquote.txt", mode="a") as f:
+        with open("code/data/newquote.txt", mode="a") as f:
             f.write(self.break_command + quote + "\n\t -" + author + "\n")
         await AlphonseUtils.affirmation(ctx)
 
