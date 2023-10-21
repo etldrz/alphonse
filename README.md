@@ -36,7 +36,7 @@ The `sheet` commands are used to interface with GoogleSheets directly from Disco
   This gets specified data and returns it to the user.
   - `list` This has Alphonse send a list of the current sheets inside the parent folder to the channel from which the command was called.
   - `plot` This has Alphonse send a plot of the specified data. Only works for sheets build with fencing, or formatted respectively.
-    - `bar/pie/line` Choosing one of these options generates a barchar, piechart, and line plot respectively. Line plots cannot be called for `inventory`.
+    - `bar/pie/line` Choosing one of these options generates a barchart, piechart, and line plot respectively. Line plots cannot be called for `inventory`.
       - `attendance/inventory` Data type for the plot.
         - `SHEET_NAME` Location of the data.
   
