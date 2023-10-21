@@ -60,7 +60,9 @@ class Analysis(commands.Cog):
                                          "\n'Analysis.role_sort'")
             return
 
-        message = "There have been " + str(len(members)) + " additions to " + ctx.guild.name + "."
+        message = "There have been " + str(len(members)) + " additions to " + ctx.guild.name + \
+        " within this semester (or the most previous one). The data isn't currently set up to be saved; if you want to save it "\
+        "then do it yourself."
 
 
         data = dict()
