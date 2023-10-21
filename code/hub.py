@@ -31,7 +31,7 @@ async def source(ctx):
     Embeds a link to Alphonse's GitHub
     """
 
-    file = discord.File('data/images/alphonse.jpg', filename='alphonse.jpg')
+    file = discord.File('code/data/images/alphonse.jpg', filename='alphonse.jpg')
     embed = discord.Embed()
     embed.url = "https://github.com/etldrz/alphonse"
     embed.title = "Alphonse's github"
