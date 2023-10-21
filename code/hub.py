@@ -16,7 +16,7 @@ INTENTS = discord.Intents(messages=True, guilds=True, members=True,
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
 
 async def load_extensions():
-    for f in os.listdir('./cogs'):
+    for f in os.listdir('code/cogs'):
         if f.endswith('.py'):
             await bot.load_extension(f'cogs.{f[:-3]}')
         
