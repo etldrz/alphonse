@@ -63,7 +63,7 @@ class Sheet(commands.Cog):
         Links to a page describing Alphonse's logic flow for `!sheet`.
         """
 
-        file = discord.File("data/images/will_o_wisp.jpg", filename="wisp.jpg")
+        file = discord.File("code/data/images/will_o_wisp.jpg", filename="wisp.jpg")
         embed = discord.Embed()
         embed.url = "https://github.com/etldrz/alphonse/blob/main/README.md#sheet"
         embed.title = "Flowchart for `!sheet` commands."
@@ -264,7 +264,7 @@ class SheetGet:
             pull_range = "Inventory!A1:B" + row_range
             data = await self.get_data(ctx, exists['id'], pull_range, "ROWS")
         
-        loc = './data/images/active_plot.png'
+        loc = 'code/data/images/active_plot.png'
         
         if plot_type in self.plot_pie:
             types = [i.pop(0) for i in data]            
@@ -389,7 +389,7 @@ class SheetGet:
         spreadsheet_id = exists['id']
         url = f'https://docs.google.com/spreadsheets/d/{spreadsheet_id}'
         embed = discord.Embed()
-        embed_image = discord.File('data/images/Google_Sheets_logo.png', filename='sheets_logo.png')
+        embed_image = discord.File('code/data/images/Google_Sheets_logo.png', filename='sheets_logo.png')
         embed.url = url
         embed.title = exists['name']
         embed.description = "The requested Google Sheet."
