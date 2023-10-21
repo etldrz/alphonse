@@ -20,7 +20,7 @@ class Wisdom(commands.Cog):
         Spits out a quote that has been given to Alphonse via `!quote.submit`
         """
         
-        with open("data/newquote.txt", mode="r") as f:
+        with open("code/data/newquote.txt", mode="r") as f:
             data = f.read().split(self.break_command)
             chosen = random.choice(data)
             await ctx.send(chosen)
