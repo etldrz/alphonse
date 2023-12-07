@@ -29,10 +29,6 @@ parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC' #Parent folder where all sheets are
 drive = build('drive', 'v3', credentials=credentials)
 
 datetime_format = "%Y-%m-%d"
-
-
-
-
 #TODO: switch in_use_sheet to be seasonal (Fall/Spring) instead of specific sheet names.
 
 def get_sheet(name):
@@ -57,7 +53,7 @@ class Sheet(commands.Cog):
     semester_fall = "Fall"
     semester_spring = "Spring"
     current_sheet = semester_fall
-    if datetime.today().month in AlphonseUtils.spring_months:
+    if not AlphonseUtils.is_fall_semester(): 
         current_sheet = semester_spring
     in_use_sheet = (current_sheet + str(datetime.today().year)).split(" ") 
     
