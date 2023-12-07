@@ -1,19 +1,27 @@
 import os
 from dotenv import load_dotenv
+from datetime import date
 
 load_dotenv()
 personal_id = int(os.getenv('PERSONAL_ID'))
+affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully (thumbs up).
 
-
-affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully.
-
-
-async def affirmation(ctx):
-    await ctx.message.add_reaction(affirmative)
+#The year is divided into two months, because that is all that VTFC cares about or deals with.
+fall_months = [8, 9, 10, 11, 12]
+spring_months = [1, 2, 3, 4, 5, 6, 7]
 
 
 def check_if_personal(ctx):
     return ctx.message.author.id == personal_id
+
+
+def is_fall_semester():
+    curr_month = date.today().month
+    return curr_month in fall_months
+
+
+async def affirmation(ctx):
+    await ctx.message.add_reaction(affirmative)
 
 
 async def dm_error(ctx, message="uh oh"):
@@ -21,11 +29,14 @@ async def dm_error(ctx, message="uh oh"):
     me = await get_member(ctx, str(personal_id))
     await me.send(message)
 
+
 async def get_member(ctx, target):
     """
     Checks the target against the member list of the guild the command is being called in, and returns
     the member object if they can be ID'd.
     """
+
+    #checks to see if the target is an `@`
     if target[0] == "<" and target[1] == "@":
         target = target[2:-1]
 

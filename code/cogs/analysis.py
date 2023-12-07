@@ -1,40 +1,24 @@
 import discord
 from discord.ext import commands
-from datetime import date, datetime
+from datetime import datetime
 from pytz import timezone
 import alphonse_utils as AlphonseUtils
-
+import Tournament
 
 
 class Analysis(commands.Cog):
 
-    
 
     def __init__(self, bot):
         self.bot = bot
         self.fall_start = [8, 10] #month, day
         self.spring_start = [1, 10] #month, day
-        self.fall_months = [8, 9, 10, 11, 12]
-        self.spring_months = [1, 2, 3, 4, 5]
 
 
     @commands.command(name="new.members")
     async def new_members(self, ctx):
-        today = date.today()
-        curr_year = today.year
-        curr_month = today.month
-
-        is_fall = None
-        if curr_month in self.fall_months:
-            is_fall = True
-        elif curr_month in self.spring_months:
-            is_fall = False
-        elif curr_month < self.fall_months[0]:
-            is_fall = False
-        else:
-            await ctx.send("You are not currently in either Spring or Fall semester, your data could be bad.")
-            is_fall = True
-
+        is_fall = AlphonseUtils.is_fall_semester()
+        
         start_date = datetime(curr_year, month=self.fall_start[0], \
                               day=self.fall_start[1], tzinfo=timezone('US/Eastern'))
         if not is_fall:
@@ -49,10 +33,6 @@ class Analysis(commands.Cog):
         await self.role_sort(ctx, new_members)
 
 
-        
-
-
-
     async def role_sort(self, ctx, members):
 
         if len(members) == 0:
@@ -61,19 +41,19 @@ class Analysis(commands.Cog):
             return
 
         message = "There have been " + str(len(members)) + " additions to " + ctx.guild.name + \
-        " within this semester (or the most previous one). The data isn't currently set up to be saved; if you want to save it "\
-        "then do it yourself."
-
+        " within this semester (or the most previous one). The data isn't currently set up to be" \
+        " saved; if you want to save it"\
+        " then do it yourself."
 
         data = dict()
         for role in ctx.guild.roles:
             count = 0
-            
             for member in members:
                 name = role.name
                 if role.name == "@everyone":
-                    name = "everyone"
-                if role in member.roles:
+                    name = "new server members"
+                if role in member.roles and \
+                   role.name != Tournament.role_name:
                     count += 1
             data[name] = count
 
@@ -82,11 +62,9 @@ class Analysis(commands.Cog):
         for d in data.items():
             message += "\n- " + str(d[1]) + " are " + d[0]
 
-
         await ctx.send(message)
 
 
 async def setup(bot):
     await bot.add_cog(Analysis(bot))
-        
         

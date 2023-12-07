@@ -7,6 +7,7 @@ class Tournament(commands.Cog):
 
     active_message_id = 0
     active_role = None
+    role_name = "tournament" #TODO: check on puting this var into guild.create_role()
 
     def __init__(self, bot):
         self.bot = bot

@@ -28,16 +28,20 @@ parent = '1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC' #Parent folder where all sheets are
 
 drive = build('drive', 'v3', credentials=credentials)
 
-#the datetime format that is given to sheets for attendance logging.
-format = "%Y-%m-%d"
+datetime_format = "%Y-%m-%d"
 
-def find(name):
+
+
+
+#TODO: switch in_use_sheet to be seasonal (Fall/Spring) instead of specific sheet names.
+
+def get_sheet(name):
     """
     Returns a sheet based on the inputted name, if that sheet exists. None if otherwise.
     """
 
-    if name == "curr":
-        name = " ".join(Sheet.curr)
+    if name == "in_use_sheet":
+        name = " ".join(Sheet.in_use_sheet)
         
     sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
 
@@ -50,8 +54,13 @@ def find(name):
 
 class Sheet(commands.Cog):
 
-
-    curr = ["Fall", "2023"] #the in-use sheet. can be changed by '!sheet set curr NAME'
+    semester_fall = "Fall"
+    semester_spring = "Spring"
+    current_sheet = semester_fall
+    if datetime.today().month in AlphonseUtils.spring_months:
+        current_sheet = semester_spring
+    in_use_sheet = (current_sheet + str(datetime.today().year)).split(" ") 
+    
 
     def __init__(self, bot):
         self.bot = bot
@@ -74,7 +83,8 @@ class Sheet(commands.Cog):
     @commands.command()
     async def sheet(self, ctx):
         """
-        Command that lets Alphonse know you're dealing with sheets. See `!flowchart` for more details.
+        Command that lets Alphonse know you're dealing with the suite of sheet
+        commands. See `!flowchart` for more details.
         """
 
         text = ctx.message.content.split(" ")
@@ -93,7 +103,7 @@ class Sheet(commands.Cog):
             case "set":
                 await SheetSet().eval_next(ctx, text)
             case _:
-                await ctx.send("Bad command. Main command not accepted.")
+                await ctx.send("Bad command. Main command not valid.")
                 return
 
     
@@ -109,8 +119,8 @@ class Sheet(commands.Cog):
             return
         text[0] = "attendance"
         if text[-1] in ["epee", "e", "foil", "f", "sabre", "saber", "s"]:
-            text = text + self.curr
-            await ctx.send("Using the in-use sheet: " + " ".join(self.curr))
+            text = text + self.in_use_sheet
+            await ctx.send("Using the in-use sheet: " + " ".join(self.in_use_sheet))
         await SheetSet().attendance(ctx, text)
 
 
@@ -126,10 +136,11 @@ class Sheet(commands.Cog):
             await ctx.send("Bad command: you need to input data.")
             return
         if text[-1] in ["broken", "b", "fixed", "f"]:
-            text = text + self.curr
-            await ctx.send("Using the in-use sheet: " + " ".join(self.curr))
+            text = text + self.in_use_sheet
+            await ctx.send("Using the in-use sheet: " + " ".join(self.in_use_sheet))
         await SheetSet().inventory(ctx, text)
     
+
     @commands.command()
     async def plot(self, ctx):
         """
@@ -142,8 +153,8 @@ class Sheet(commands.Cog):
         text[0] = "plot"
         data_types = SheetGet.attendance_commands + SheetGet.inventory_commands
         if text[-1] in data_types:
-            text = text + self.curr
-            await ctx.send("Using the in-use sheet: " + " ".join(self.curr))
+            text = text + self.in_use_sheet
+            await ctx.send("Using the in-use sheet: " + " ".join(self.in_use_sheet))
         await SheetGet().plot(ctx, text)
 
 
@@ -151,7 +162,7 @@ class SheetGet:
     
 
     """
-    FORMATTING: get a/i/curr/SHEET_NAME
+    DATETIME_FORMATTING: get a/i/in_use_sheet/SHEET_NAME
     IF LAST TWO THEN SHEET EMBED LINKED IS OUTPUTTED
     ELSE:
         r/p
@@ -249,7 +260,7 @@ class SheetGet:
             await ctx.send("Line plot is not allowed for inventory.")
             return
         
-        exists = find(" ".join(text))
+        exists = get_sheet(" ".join(text))
         if exists == None:
             await ctx.send("Please specify a valid sheet name.")
             return
@@ -312,7 +323,7 @@ class SheetGet:
             plt.xticks(rotation=12, ha='right')
         elif plot_type in self.plot_line:
             [i.pop(0) for i in data]
-            dates = [i.strftime('%b-%d') for i in [datetime.strptime(j, format) for j in data[0]]]
+            dates = [i.strftime('%b-%d') for i in [datetime.strptime(j, datetime_format) for j in data[0]]]
             step_size = int(len(dates) / 3)
             total_att = [int(i) for i in data[-1]]
             plt.figure(figsize=(7,5))
@@ -362,7 +373,7 @@ class SheetGet:
 
     async def list(self, ctx):
         """
-        Sends a list of current sheets to the chat.
+        Sends a list of in_use_sheetent sheets to the chat.
         """
         
         sheet_list = drive.files().list(
@@ -382,7 +393,7 @@ class SheetGet:
         Sends a link of the named sheet to the chat.
         """
         
-        exists = find(" ".join(text))
+        exists = get_sheet(" ".join(text))
         if exists == None:
             await ctx.send("The requested sheet does not exist.")
             return
@@ -414,7 +425,7 @@ class SheetDelete:
 
         text.pop(len(text) - 1)
 
-        exists = find(" ".join(text))
+        exists = get_sheet(" ".join(text))
         if exists is None:
             await ctx.send("The file does not exist in the in-use directory.")
             return
@@ -441,6 +452,46 @@ class SheetSet:
     fixed = ["fixed", "fi"]
     
 
+    async def check_current_semester(self, ctx, text):
+        """
+        Checks to see if the correct sheet is being used for data input, based on when the command
+        is called. If the incorrect sheet is being used, the in-use sheet is set to be the current semester/year
+        and a sheet with this name is created if it doesn't already exist.
+        """
+        correct_name = SheetBuild().make_fencing_sheet_name(for_semester=True)
+        if correct_name != Sheet().in_use_sheet:
+            Sheet().in_use_sheet = correct_name
+            await ctx.send("Looks like you're calling a data-input command into a sheet which does not" \
+                           " correspond to the current semester and/or year. The in-use sheet (" +
+                           " ".join(Sheet().in_use_sheet) + ") will be" \
+                           " changed to the correct time and a new sheet will be created if needs be." \
+                           " You don't have to do anything else.")
+            if get_sheet(Sheet().in_use_sheet) is None:
+                new_sheet = SheetBuild().build(ctx, " ".join(correct_name))
+                SheetBuild().configure_fencing(ctx, new_sheet)
+        return correct_name
+
+
+    async def add_data(self, spreadsheet_id, data_values, write_to_range):
+        """
+        Writes the inputted data to the inputted range on the inputted sheet.
+        """
+        body = {
+            'values': [
+                data_values
+            ]
+        }
+
+        try:
+            service = build('sheets', 'v4', credentials=credentials)
+            service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
+            ).execute()
+            await AlphonseUtils.affirmation(ctx)
+        except HttpError as err:
+            await AlphonseUtils.dm_error(ctx)
+        
+
     async def eval_next(self, ctx, text):
         """
         Redirects the logic to the next named command.
@@ -452,8 +503,8 @@ class SheetSet:
             await ctx.send("Please specify what you would like to set.")
             return
 
-        if text[0] == "curr":
-            await self.set_curr(ctx, text)
+        if text[0] == "in_use_sheet":
+            await self.set_in_use_sheet(ctx, text)
             return
         elif text[0] in self.attendance_commands:
             await self.attendance(ctx, text)
@@ -471,24 +522,26 @@ class SheetSet:
         """
         
         del text[0]
-        if len(text) == 0:
-            await ctx.send("Bad command")
+        if len(text) == 0 or len(text) < 6:
+            await ctx.send("Bad command due to length.")
             return
-        
-        curr_date = str(date.today())
 
+        current_date = str(date.today())
+
+        #This loop checks to see that the inputted attendance ints are all there.
         for v in [0, 2, 4]:
             if text[v].isnumeric():
                 text[v] = int(text[v])
             else:
-                await ctx.send("Bad numeric input. Check to see that the format you used is"\
+                await ctx.send("Bad numeric input. Check to see that the datetime_format you used is"\
                                " [COUNT WEAPON_NAME]")
                 return
 
-        write_data = [curr_date, 0, 0, 0, 0]
+        #What will eventually be put into the sheet.
+        write_data = [current_date, 0, 0, 0, 0]
         
+        #This loop checks to see that each weapon is inputted only once, as well as being valid
         duplicate = "You used the same weapon name two or more times. Bad command."
-
         for w in [1, 3, 5]:
             if text[w] in self.epee:
                 if write_data[3] != 0:
@@ -508,42 +561,24 @@ class SheetSet:
                 await ctx.send("Bad weapon entry. Check to see that you spelled everything correctly"\
                                " and that you put it in the order of [COUNT WEAPON_NAME]")
                 return
-                
+
         del text[0:6]
         
-        exists = find(" ".join(text))
+        name = await self.check_current_semester(ctx, text)
+        exists = get_sheet(name)
         if exists is None:
-            await ctx.send("Bad data location")
+            await ctx.send("Bad sheet name.")
             return
-
         spreadsheet_id = exists['id']
 
-        pull_length = 50 # a little over days of practice for one semester
+        pull_length = 50 #a little over how many days of practice are in one semester
         pull_range = "Attendance!A1" + ":A" + str(pull_length)
 
         retrieved_data = await SheetGet().get_data(ctx, spreadsheet_id, pull_range)
-
-        if len(retrieved_data) == pull_length:
-            await ctx.send("Consider switching to a new sheet, there are 49 attendance values in this one.")
-        
         write_to_range = "Attendance!A" + str(len(retrieved_data) + 1) + ":E" + str(len(retrieved_data) + 1)
-
         write_data[-1] = sum(write_data[1:4])
 
-        body = {
-            'values': [
-                write_data
-            ]
-        }
-
-        try:
-            service = build('sheets', 'v4', credentials=credentials)
-            service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
-            ).execute()
-            await AlphonseUtils.affirmation(ctx)
-        except HttpError as err:
-            await AlphonseUtils.dm_error(ctx)
+        self.add_data(spreadsheet_id, write_data, write_to_range)
 
 
     async def inventory(self, ctx, text):
@@ -554,7 +589,7 @@ class SheetSet:
         !sheet set inventory 1 maskcord broken Fall 2023
         """
 
-        del text[0] #removes inventory call
+        del text[0] 
         if not len(text) >= 4:
             await ctx.send("Bad command, missing commands.")
             return
@@ -567,7 +602,7 @@ class SheetSet:
                            "a digit.")
             return
         
-        del text[0] #removes the count
+        del text[0]
         type_to_change = text[0]
         if type_to_change in self.inventory_types and text[1] not in ["body", "bodycord"]:
             del text[0]
@@ -588,14 +623,14 @@ class SheetSet:
             return
 
         if text[0] in self.fixed:
-            count_to_change *= -1 #depricates the count in the sheet by the amount fixed
+            count_to_change *= -1
         elif text[0] not in self.broken:
             await ctx.send("Bad specification of whether it is broken or fixed.")
             return
 
         del text[0]
 
-        exists = find(" ".join(text))
+        exists = get_sheet(" ".join(text))
         if exists is None:
             await ctx.send("The specified sheet does not exist")
             return
@@ -613,7 +648,7 @@ class SheetSet:
             sheet_row = 6
         spreadsheet_id = exists['id']
         
-        sheet_range = "Inventory!B" + str(sheet_row) + ":B" + str(sheet_row)
+        write_to_range = "Inventory!B" + str(sheet_row) + ":B" + str(sheet_row)
 
         old_data = await SheetGet().get_data(ctx, spreadsheet_id, sheet_range)
 
@@ -626,40 +661,37 @@ class SheetSet:
         if new_data < 0:
             new_data == 0
 
-        body = {
-            'values':
-            [
-                [new_data]
-            ]
-        }
+        self.add_data(spreadsheet_id, new_data, write_to_range)
 
-        try:
-            service = build('sheets', 'v4', credentials=credentials)
-            service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id, range=sheet_range, body=body, valueInputOption="USER_ENTERED"
-            ).execute()
-            await AlphonseUtils.affirmation(ctx)
-        except HttpError as err:
-            await AlphonseUtils.dm_error(ctx)
-         
-
-    async def set_curr(self, ctx, text):
+    async def set_in_use_sheet(self, ctx, text):
         del text[0]
         if len(text) == 0:
             await ctx.send("Please specify the name of a sheet you would like to set as in-use.")
             return
 
-        exists = find(" ".join(text))
+        exists = get_sheet(" ".join(text))
         if exists is None:
             await ctx.send("There is no sheet by that name within the parent directory.")
             return
-        Sheet.curr = exists['name'].split(" ")
+        Sheet.in_use_sheet = exists['name'].split(" ")
         await AlphonseUtils.affirmation(ctx)
         
 
 class SheetBuild:
 
 
+    def make_fencing_sheet_name(for_semester):
+        """
+        for_semester is a bool representing if the name is for one semester or the whole year. The name
+        returned is created accordingly.
+        """
+        current_name = str(date.today().year - 1) + "-" + str(date.today().year)
+        if is for_semester:
+            current_name = Sheet().semester_fall if AlphonseUtils.is_fall_semester() else Sheet().semester_spring
+            current_name += str(date.today().year)
+        return current_name.split(" ")
+        
+        
     async def build(self, ctx, text):
         """
         Builds a sheet with the given name. If `fencing` is specified, then the sheet
@@ -688,7 +720,7 @@ class SheetBuild:
         if len(text) > 0:
             title = " ".join(text)
 
-        exists = find(title)
+        exists = get_sheet(title)
         if exists != None:
             await ctx.send("The specified filename already exists. Try using the command 'sheet get list' "\
                            "or choosing a different name.")
@@ -723,7 +755,7 @@ class SheetBuild:
         init_values_inv = ['Epee blades', 'Foil blades', 'Sabre blades','Epee bodycords',
                            'Foil/Sabre bodycords', 'Maskcords']
         
-        #creates a new sheet named 'Attendance' and renames the first sheet to 'Inventory'
+        #Creates a new sheet named 'Attendance' and renames the first sheet to 'Inventory'
         body_init = {
             'requests':[{
                 'addSheet':{
