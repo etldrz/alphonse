@@ -8,6 +8,11 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully (thumbs up).
 
+
+
+#TODO: make a function that formats error messages, to be applied whenever dm_error is called
+
+
 #The year is divided into two months, because that is all that VTFC cares about or deals with.
 fall_months = [8, 9, 10, 11, 12]
 spring_months = [1, 2, 3, 4, 5, 6, 7]

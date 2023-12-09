@@ -164,7 +164,37 @@ class FolderOrganize:
     Organizes the parent Google Drive (folders for each year, as well as moving old data to these folders)
     """
        
-    async def create_folder(ctx):
+
+
+    async def combine_semesters(self, ctx):
+        """
+        This will combine fall and spring semester data into one folder. It assumes that it is being called at
+        the correct time (after spring semester) and that the specified folders exist.
+        """
+
+        year_range = [str(date.today().year - 1), str(date.today().year)]
+        fall = get_sheet(Sheet.semester_fall + " " + year_range[0])
+        spring = get_sheet(Sheet.semester_spring + " " + year_range[1])
+
+        if fall is None or spring is None:
+            AlphonseUtils.dm_error(ctx)
+            return
+
+        new_folder = self.create_folder(ctx)
+        if new_folder is None:
+            return
+
+        parent_id = new_folder["id"]
+        try:
+            self.move_file(ctx, fall, parent_id)
+            self.move_file(ctx, spring, parent_id)
+            AlphonseUtils.affirmation(ctx)
+        except HttpError as error:
+            await AlphonseUtils.dm_error(ctx)
+
+
+
+    async def create_folder(self, ctx):
         folder_name = str(date.today().year - 1) + "-" + str(date.today().year)
         try:
             service = build("drive", "v3", credentials=credentials)
@@ -175,8 +205,34 @@ class FolderOrganize:
             }
 
             file = service.files().create(body=file_metadata, fields="id").execute()
+            return file
         except HttpError as error:
             await AlphonseUtils.dm_error(ctx)
+            return None
+
+
+    async def move_file(self, ctx, file_to_move, new_parent_id):
+        file_id = file_to_move["id"]
+
+        try:
+            service = build("drive", "v3", credentials=credentials)
+            file = service.files().get(fileId=file_id, fields="parents").execute()
+            previous_parents = ",".join(file.get("parents"))
+            file = (
+                service.files()
+                .update(
+                    fileId=file_id,
+                    addParents=new_parent_id,
+                    removeParents=previous_parents,
+                    fields="id, parents",
+                )
+            )
+            .execute()
+        except HttpError as error:
+            await ctx.dm_error(ctx)
+
+    
+
 
 class SheetGet:
     """
