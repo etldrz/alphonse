@@ -16,7 +16,7 @@ INTENTS = discord.Intents(messages=True, guilds=True, members=True,
 bot = commands.Bot(command_prefix='!', intents=INTENTS)
 
 async def load_extensions():
-    for f in os.listdir('code/cogs'):
+    for f in os.listdir('./cogs'):
         if f.endswith('.py'):
             await bot.load_extension(f'cogs.{f[:-3]}')
         
@@ -31,7 +31,7 @@ async def source(ctx):
     Embeds a link to Alphonse's GitHub
     """
 
-    file = discord.File('code/data/images/alphonse.jpg', filename='alphonse.jpg')
+    file = discord.File('data/images/alphonse.jpg', filename='alphonse.jpg')
     embed = discord.Embed()
     embed.url = "https://github.com/etldrz/alphonse"
     embed.title = "Alphonse's github"

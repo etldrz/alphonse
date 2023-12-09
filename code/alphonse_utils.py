@@ -4,11 +4,17 @@ from datetime import date
 
 load_dotenv()
 personal_id = int(os.getenv('PERSONAL_ID'))
+TOKEN = os.getenv('DISCORD_TOKEN')
+GUILD = os.getenv('DISCORD_GUILD')
 affirmative = '\U0001F44D' #Al's reaction to a message when the job is completed successfully (thumbs up).
 
 #The year is divided into two months, because that is all that VTFC cares about or deals with.
 fall_months = [8, 9, 10, 11, 12]
 spring_months = [1, 2, 3, 4, 5, 6, 7]
+
+
+#The role name used by Alphonse when creating a tournament role
+tournament_role_name = "tournament"
 
 
 def check_if_personal(ctx):

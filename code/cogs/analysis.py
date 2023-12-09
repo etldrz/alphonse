@@ -3,7 +3,6 @@ from discord.ext import commands
 from datetime import datetime
 from pytz import timezone
 import alphonse_utils as AlphonseUtils
-import Tournament
 
 
 class Analysis(commands.Cog):
@@ -53,7 +52,7 @@ class Analysis(commands.Cog):
                 if role.name == "@everyone":
                     name = "new server members"
                 if role in member.roles and \
-                   role.name != Tournament.role_name:
+                   role.name != AlphonseUtils.tournament_role_name:
                     count += 1
             data[name] = count
 
