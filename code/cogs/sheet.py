@@ -37,17 +37,36 @@ user_keyword_in_use_sheet = "curr"
 
 def get_file(name):
     """
-    return
     Returns a sheet based on the inputted name, if that sheet exists. None if otherwise.
     """
         
     if name == user_keyword_in_use_sheet:
         name = " ".join(Sheet.in_use_sheet)
-    sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
 
-    for file in sheet_list.get("files", []):
-        if file["name"] == name:
-            return file
+    try:
+        sheet_list = drive.files().list(q=f"'{parent}' in parents and trashed=False").execute()
+    except:
+        return None
+
+    subdirectories = []
+    for item in sheet_list.get("files", []):
+        if item["name"] == name:
+            return item
+        elif item["mimeType"] == folder_mimetype:
+            subdirectories.append(item)
+
+    #If the above loop fails, then the requested file could be inside one of the sub-directories.
+    #If the loop becomes slow when there are many subdirectories, it can be made more efficient
+    #by focusing on directories that share name features (ie years) with the requested files.
+    for sub in subdirectories:
+        sub_id = sub["id"]
+        try:
+            sub_items = drive.files().list(q=f"'{sub_id}' in parents and trashed=False").execute()
+        except:
+            continue
+        for item in sub_items.get("files", []):
+            if item["name"] == name:
+                return item
 
     return None
 
@@ -111,7 +130,8 @@ class Sheet(commands.Cog):
     @commands.command()
     async def att(self, ctx):
         """
-        Shortcut for `!sheet set attendance`. Doesn't need sheet_name specified.
+        Shortcut for `!sheet set attendance`. Don't specify the sheet name; if for some
+        reason you need to specify the name use the extended command.
         """
         
         text = ctx.message.content.split(" ")
@@ -120,7 +140,8 @@ class Sheet(commands.Cog):
             return
         text[0] = "attendance"
         if text[-1] in ["epee", "e", "foil", "f", "sabre", "saber", "s"]:
-            text = text + self.in_use_sheet
+            await SheetSet().check_current_semester(ctx)
+            text += self.in_use_sheet
             await ctx.send("Using the in-use sheet: " + " ".join(self.in_use_sheet))
         await SheetSet().attendance(ctx, text)
 
@@ -171,7 +192,8 @@ class FolderOrganize:
         the correct time (after spring semester) and that the specified folders exist.
         """
 
-        year_range = [str(date.today().year - 1), str(date.today().year)]
+        #year_range = [str(date.today().year - 1), str(date.today().year)]
+        year_range = ["2021", "2022"]
         fall = get_file(Sheet.semester_fall + " " + year_range[0])
         spring = get_file(Sheet.semester_spring + " " + year_range[1])
 
@@ -179,18 +201,32 @@ class FolderOrganize:
             AlphonseUtils.dm_error(ctx)
             return
 
-        new_folder = self.create_folder(ctx)
+        row_range = "75"
+        pull_range = "Attendance!A2:E" + row_range
+        combined_name = "Data " + "-".join(year_range)
+
+        try:
+            fall_attendance = await SheetGet().get_data(ctx, fall["id"], pull_range, "COLUMNS")
+            spring_attendance = await SheetGet().get_data(ctx, spring["id"], pull_range, "COLUMNS")
+        except:
+            AlphonseUtils.dm_error(ctx)
+
+        await ctx.send(spring_attendance)
+        combined_data = [i + j for i, j in zip(fall_attendance, spring_attendance)]
+        await SheetBuild().build(ctx, [""] + ["fencing"] + [combined_name])
+        combined = get_file(combined_name)
+        push_range = "Attendance!A2:E" + str(len(combined_data[0]) + 2)
+        await SheetSet().add_data(ctx, combined["id"], combined_data, push_range)
+
+        new_folder = await self.create_folder(ctx)
         if new_folder is None:
             return
-
+        
         parent_id = new_folder["id"]
-        try:
-            self.move_file(ctx, fall, parent_id)
-            self.move_file(ctx, spring, parent_id)
-            AlphonseUtils.affirmation(ctx)
-        except HttpError as error:
-            await AlphonseUtils.dm_error(ctx)
-
+        await self.move_file(ctx, fall, parent_id)
+        await self.move_file(ctx, spring, parent_id)
+        await self.move_file(ctx, combined, parent_id)
+        await AlphonseUtils.affirmation(ctx)
 
 
     async def create_folder(self, ctx):
@@ -216,7 +252,7 @@ class FolderOrganize:
         try:
             service = build("drive", "v3", credentials=credentials)
             file = service.files().get(fileId=file_id, fields="parents").execute()
-            previous_parents = ",".join(file.get("parents"))
+            previous_parents = ",".join(file.get("parents", []))
             file = (
                 service.files()
                 .update(
@@ -443,9 +479,8 @@ class SheetGet:
         
         exists = get_file(" ".join(text))
         if exists == None:
-            await ctx.send("I'm not seeing the requested sheet/folder. It could be that the item is within a" \
-                           " folder in the parent drive--I don't currently have the capacity to search" \
-                           " through them. It could also be that you misspelled the request, or that" \
+            await ctx.send("I'm not seeing the requested sheet/folder." \
+                           " It be that you misspelled the request, or that" \
                            " it doesn't exist. Try `!sheet get drive`")
             return
         spreadsheet_id = exists["id"]
@@ -524,47 +559,6 @@ class SheetSet:
     fixed = ["fixed", "fi"]
     
 
-    async def check_current_semester(self, ctx):
-        """
-        Checks to see if the correct sheet is being used for data input, based on when the command
-        is called. If the incorrect sheet is being used, the in-use sheet is set to be the current semester/year
-        and a sheet with this name is created if it doesn't already exist.
-        """
-
-        correct_name = SheetBuild().make_fencing_sheet_name(for_semester=True)
-        if correct_name != Sheet.in_use_sheet:
-            await ctx.send("Looks like you're calling a data-input command into a sheet which does not" \
-                           " correspond to the current semester and/or year. The in-use sheet " +
-                           " will be changed to " + " ".join(correct_name) +
-                           " and a new sheet with that name will be created if one doesn't already exist." \
-                           " You don't have to do anything else.")
-            Sheet.in_use_sheet = correct_name
-            if get_file(" ".join(Sheet.in_use_sheet)) is None:
-                #The list formatted is because build() expects a command and then the keyword fencing
-                await SheetBuild().build(ctx, [""] + ["fencing"] + correct_name)
-        return correct_name
-
-
-    async def add_data(self, ctx, spreadsheet_id, data_values, write_to_range):
-        """
-        Writes the inputted data to the inputted range on the inputted sheet.
-        """
-        body = {
-            "values": [
-                data_values
-            ]
-        }
-
-        try:
-            service = build("sheets", "v4", credentials=credentials)
-            service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
-            ).execute()
-            await AlphonseUtils.affirmation(ctx)
-        except HttpError as err:
-            await AlphonseUtils.dm_error(ctx)
-        
-
     async def eval_next(self, ctx, text):
         """
         Redirects the logic to the next named command.
@@ -607,7 +601,7 @@ class SheetSet:
                 text[v] = int(text[v])
             else:
                 await ctx.send("Bad numeric input. Check to see that the datetime_format you used is"\
-                               " [COUNT WEAPON_NAME]")
+                               " [COUNT WEAPON_NAME]x3")
                 return
 
         #What will eventually be put into the sheet.
@@ -636,17 +630,17 @@ class SheetSet:
                 return
 
         del text[0:6]
-        
-        name = await self.check_current_semester(ctx)
-        exists = get_file(" ".join(name))
+        name = " ".join(text)
+        exists = get_file(name)
         if exists is None:
             await ctx.send("Bad sheet name.")
             return
         spreadsheet_id = exists["id"]
 
-        pull_length = 50 #a little over how many days of practice are in one semester
+        #Google API doesn't populate the returned list with empty cells, hence the initial range pull acting as the
+        #write_to_range length
+        pull_length = 75 #Well over how many days of practice are in one semester
         pull_range = "Attendance!A1" + ":A" + str(pull_length)
-
         retrieved_data = await SheetGet().get_data(ctx, spreadsheet_id, pull_range)
         write_to_range = "Attendance!A" + str(len(retrieved_data) + 1) + ":E" + str(len(retrieved_data) + 1)
         write_data[-1] = sum(write_data[1:4])
@@ -736,6 +730,7 @@ class SheetSet:
 
         self.add_data(spreadsheet_id, new_data, write_to_range)
 
+
     async def set_in_use_sheet(self, ctx, text):
         del text[0]
         if len(text) == 0:
@@ -751,7 +746,50 @@ class SheetSet:
             return
         Sheet.in_use_sheet = exists["name"].split(" ")
         await AlphonseUtils.affirmation(ctx)
-        
+
+
+    async def check_current_semester(self, ctx):
+        """
+        Checks to see if the correct sheet is being used for data input, based on when the command
+        is called. If the incorrect sheet is being used, the in-use sheet is set to be the current semester/year
+        and a sheet with this name is created if it doesn't already exist.
+        """
+
+        correct_name = SheetBuild().make_fencing_sheet_name(for_semester=True)
+        if correct_name != Sheet.in_use_sheet:
+            await ctx.send("Looks like you're calling a data-input command into a sheet which does not" \
+                           " correspond to the current semester and/or year. The in-use sheet " +
+                           " will be changed to " + " ".join(correct_name) +
+                           " and a new sheet with that name will be created if one doesn't already exist." \
+                           " You don't have to do anything else.")
+            if AlphonseUtils.is_fall_semester():
+                await FolderOrganize().combine_semesters(ctx)
+            Sheet.in_use_sheet = correct_name
+            if get_file(" ".join(Sheet.in_use_sheet)) is None:
+                #The list being added to is because build() expects a command and then the keyword 'fencing'
+                await SheetBuild().build(ctx, [""] + ["fencing"] + correct_name)
+        return correct_name
+
+
+    async def add_data(self, ctx, spreadsheet_id, data_values, write_to_range):
+        """
+        Writes the inputted data to the inputted range on the inputted sheet.
+        """
+        body = {
+            "values": [
+                data_values
+            ]
+        }
+
+        try:
+            service = build("sheets", "v4", credentials=credentials)
+            service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
+            ).execute()
+            await AlphonseUtils.affirmation(ctx)
+        except HttpError as err:
+            await AlphonseUtils.dm_error(ctx)
+         
 
 class SheetBuild:
 
