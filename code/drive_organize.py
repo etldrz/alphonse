@@ -1,4 +1,3 @@
-
 class OrganizeDrive():
     
 
@@ -25,8 +24,10 @@ class OrganizeDrive():
         combined_name = "Data " + "-".join(year_range)
 
         try:
-            fall_attendance = await SheetGet().get_data(ctx, current_fall_file["id"], pull_range, "COLUMNS")
-            spring_attendance = await SheetGet().get_data(ctx, current_spring_file["id"], pull_range, "COLUMNS")
+            fall_attendance = await SheetGet().get_data(
+                ctx, current_fall_file["id"], pull_range, "COLUMNS")
+            spring_attendance = await SheetGet().get_data(
+                ctx, current_spring_file["id"], pull_range, "COLUMNS")
         except:
             AlphonseUtils.dm_error(ctx)
 

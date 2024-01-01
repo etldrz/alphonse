@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from datetime import date
+from datetime import date, datetime
 
 load_dotenv()
 personal_id = int(os.getenv('PERSONAL_ID'))
@@ -68,3 +68,66 @@ async def get_member(ctx, target):
 
 
 
+
+class SheetUtils:
+    """
+    Contains utility functions and values for the sheet.py cog.
+    """
+
+    #This is the keyword that users define or use to set the in_use_sheet
+    user_keyword_in_use_sheet = "curr"
+
+    #Parent folder where all the sheets are stored.
+    parent = "1mGKri2dKu7E28BrN9nVMtU6qBszTt7QC"
+
+    folder_mimetype = "application/vnd.google-apps.folder"
+
+    #This chunk sets the in_use_sheet to be "CURRENT_SEMSTER YEAR"
+    semester_fall = "Fall"
+    semester_spring = "Spring"
+    current_sheet = semester_fall
+    if not is_fall_semester(): 
+        current_sheet = semester_spring
+    in_use_sheet = [current_sheet, str(datetime.today().year)] 
+
+
+
+
+    def get_file(name, drive):
+        """
+        Returns a sheet based on the inputted name, if that sheet exists. None if otherwise.
+        """
+
+        if name == SheetUtils.user_keyword_in_use_sheet:
+            name = " ".join(SheetUtils.in_use_sheet)
+
+        try:
+            sheet_list = drive.files().list(
+                q=f"'{SheetUtils.parent}' in parents and trashed=False"
+            ).execute()
+        except:
+            return None
+
+        subdirectories = []
+        for item in sheet_list.get("files", []):
+            if item["name"] == name:
+                return item
+            elif item["mimeType"] == SheetUtils.folder_mimetype:
+                subdirectories.append(item)
+
+        #If the above loop fails, then the requested file could be inside one of the sub-directories
+        #If the loop becomes slow when there are many subdirectories, it can be made more efficient
+        #by focusing on directories that share name features (ie years) with the requested files.
+        for sub in subdirectories:
+            sub_id = sub["id"]
+            try:
+                sub_items = drive.files().list(
+                    q=f"'{sub_id}' in parents and trashed=False"
+                ).execute()
+            except:
+                continue
+            for item in sub_items.get("files", []):
+                if item["name"] == name:
+                    return item
+
+        return None
