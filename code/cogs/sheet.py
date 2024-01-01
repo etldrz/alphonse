@@ -19,6 +19,15 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
           "https://www.googleapis.com/auth/drive.metadata",
           "https://www.googleapis.com/auth/drive.file"]
 
+
+
+
+#leave all command line here, then make new file for additional shit (rearranging, etc)
+
+
+
+
+
 SERVICE_ACCOUNT_FILE = "data/sensitive/alphonse-key.json"
 
 credentials = service_account.Credentials.from_service_account_file(
@@ -179,93 +188,6 @@ class Sheet(commands.Cog):
             await ctx.send("Using the in-use sheet: " + " ".join(self.in_use_sheet))
         await SheetGet().plot(ctx, text)
 
-
-class FolderOrganize:
-    """
-    Organizes the parent Google Drive (folders for each year, as well as moving old data to these folders)
-    """
-
-
-    async def combine_semesters(self, ctx):
-        """
-        This will combine fall and spring semester data into one folder. It assumes that it is being called at
-        the correct time (after spring semester) and that the specified folders exist.
-        """
-
-        #year_range = [str(date.today().year - 1), str(date.today().year)]
-        year_range = ["2021", "2022"]
-        fall = get_file(Sheet.semester_fall + " " + year_range[0])
-        spring = get_file(Sheet.semester_spring + " " + year_range[1])
-
-        if fall is None or spring is None:
-            AlphonseUtils.dm_error(ctx)
-            return
-
-        row_range = "75"
-        pull_range = "Attendance!A2:E" + row_range
-        combined_name = "Data " + "-".join(year_range)
-
-        try:
-            fall_attendance = await SheetGet().get_data(ctx, fall["id"], pull_range, "COLUMNS")
-            spring_attendance = await SheetGet().get_data(ctx, spring["id"], pull_range, "COLUMNS")
-        except:
-            AlphonseUtils.dm_error(ctx)
-
-        await ctx.send(spring_attendance)
-        combined_data = [i + j for i, j in zip(fall_attendance, spring_attendance)]
-        await SheetBuild().build(ctx, [""] + ["fencing"] + [combined_name])
-        combined = get_file(combined_name)
-        push_range = "Attendance!A2:E" + str(len(combined_data[0]) + 2)
-        await SheetSet().add_data(ctx, combined["id"], combined_data, push_range)
-
-        new_folder = await self.create_folder(ctx)
-        if new_folder is None:
-            return
-        
-        parent_id = new_folder["id"]
-        await self.move_file(ctx, fall, parent_id)
-        await self.move_file(ctx, spring, parent_id)
-        await self.move_file(ctx, combined, parent_id)
-        await AlphonseUtils.affirmation(ctx)
-
-
-    async def create_folder(self, ctx):
-        folder_name = str(date.today().year - 1) + "-" + str(date.today().year)
-        try:
-            service = build("drive", "v3", credentials=credentials)
-            file_metadata = {
-                "name": folder_name,
-                "mimeType": folder_mimetype,
-                "parents": [parent]
-            }
-
-            file = service.files().create(body=file_metadata, fields="id").execute()
-            return file
-        except HttpError as error:
-            await AlphonseUtils.dm_error(ctx)
-            return None
-
-
-    async def move_file(self, ctx, file_to_move, new_parent_id):
-        file_id = file_to_move["id"]
-
-        try:
-            service = build("drive", "v3", credentials=credentials)
-            file = service.files().get(fileId=file_id, fields="parents").execute()
-            previous_parents = ",".join(file.get("parents", []))
-            file = (
-                service.files()
-                .update(
-                    fileId=file_id,
-                    addParents=new_parent_id,
-                    removeParents=previous_parents,
-                    fields="id, parents",
-                )
-            ).execute()
-        except HttpError as error:
-            await ctx.dm_error(ctx)
-
-    
 
 
 class SheetGet:
@@ -637,15 +559,15 @@ class SheetSet:
             return
         spreadsheet_id = exists["id"]
 
-        #Google API doesn't populate the returned list with empty cells, hence the initial range pull acting as the
-        #write_to_range length
+        #Google API doesn't populate the returned list with empty cells,
+        #hence the initial range pull acting as the write_to_range length
         pull_length = 75 #Well over how many days of practice are in one semester
         pull_range = "Attendance!A1" + ":A" + str(pull_length)
         retrieved_data = await SheetGet().get_data(ctx, spreadsheet_id, pull_range)
         write_to_range = "Attendance!A" + str(len(retrieved_data) + 1) + ":E" + str(len(retrieved_data) + 1)
         write_data[-1] = sum(write_data[1:4])
 
-        await self.add_data(ctx, spreadsheet_id, write_data, write_to_range)
+        await self.add_data_single_range(ctx, spreadsheet_id, write_data, write_to_range)
 
 
     async def inventory(self, ctx, text):
@@ -728,7 +650,7 @@ class SheetSet:
         if new_data < 0:
             new_data == 0
 
-        self.add_data(spreadsheet_id, new_data, write_to_range)
+        self.add_data_single_range(spreadsheet_id, new_data, write_to_range)
 
 
     async def set_in_use_sheet(self, ctx, text):
@@ -771,7 +693,7 @@ class SheetSet:
         return correct_name
 
 
-    async def add_data(self, ctx, spreadsheet_id, data_values, write_to_range):
+    async def add_data_single_range(self, ctx, spreadsheet_id, data_values, write_to_range):
         """
         Writes the inputted data to the inputted range on the inputted sheet.
         """
@@ -788,7 +710,27 @@ class SheetSet:
             ).execute()
             await AlphonseUtils.affirmation(ctx)
         except HttpError as err:
-            await AlphonseUtils.dm_error(ctx)
+            await AlphonseUtils.dm_error(ctx, "The data was unabled to be added :: "\
+                                         "SheetSet.add_data_single_range()\n" \
+                                         "The given error is " + str(err) + "\n")
+
+
+    async def add_data_batch_update(self, ctx, spreadsheet_id, data_values, write_to_range):
+        body = {
+            "requests":[
+                {
+                    "insertDimension": {
+                        "range": {
+                            "sheetId": spreadsheet_id,
+                            "dimension": dim,
+                            "startIndex": start_index,
+                            "endIndex": end_index
+                        },
+                        "inheritFromBefore": True:
+                    }
+                }
+            ]
+        }
          
 
 class SheetBuild:
@@ -828,7 +770,8 @@ class SheetBuild:
 
     async def make_sheet(self, ctx, text):
         """
-        Makes a sheet via GoogleSheets.api. With no input, the sheet name is the date.
+        Makes a sheet via GoogleSheets.api. With no input, the sheet name is the date that it was
+        created.
         """
         
         title = str(date.today())
