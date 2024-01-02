@@ -2,6 +2,7 @@ import discord
 import matplotlib.pyplot as plt
 import os
 import seaborn as sns
+from organize_drive import OrganizeDrive
 import alphonse_utils as AlphonseUtils
 from alphonse_utils import SheetUtils
 from discord.ext import commands
@@ -57,7 +58,6 @@ class Sheet(commands.Cog):
         embed.title = "Flowchart for `!sheet` commands."
         embed.set_image(url="attachment://wisp.jpg")
         await ctx.send(file=file, embed=embed)
-        await FolderOrganize().create_folder(ctx)
 
     @commands.command()
     async def sheet(self, ctx):
@@ -301,7 +301,9 @@ class SheetGet:
             plt.xticks(rotation=12, ha="right")
         elif plot_type in self.plot_line:
             [i.pop(0) for i in data]
-            dates = [i.strftime("%b-%d") for i in [datetime.strptime(j, datetime_format) for j in data[0]]]
+            dates = [i.strftime("%b-%d") \
+                     for i in [datetime.strptime(j, datetime_format) \
+                               for j in data[0]]]
             step_size = int(len(dates) / 3)
             total_att = [int(i) for i in data[-1]]
             plt.figure(figsize=(7,5))
@@ -323,7 +325,7 @@ class SheetGet:
 
     async def list(self, ctx):
         """
-        Sends a list of in_use_sheetent sheets to the chat.
+        Sends a list of sheets within the parent directory to the chat.
         """
         
         sheet_list = drive.files().list(
@@ -351,10 +353,12 @@ class SheetGet:
         
         exists = SheetUtils.get_file(" ".join(text), drive)
         if exists == None:
-            await ctx.send("I'm not seeing the requested sheet/folder." \
-                           " It be that you misspelled the request, or that" \
-                           " it doesn't exist. Try `!sheet get drive`")
+            message = "I'm not seeing the requested sheet/folder." \
+                " It be that you misspelled the request, or that" \
+                " it doesn't exist. Try `!sheet get drive`"
+            await ctx.send(message)
             return
+
         spreadsheet_id = exists["id"]
         url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
         #This accounts for the what-if of a folder being searched for
@@ -406,8 +410,10 @@ class SheetDelete:
             return
 
         if exists["mimeType"] == SheetUtils.folder_mimetype:
-            await ctx.send("You have requested to delete a folder within the parent directory." \
-                           " Due to an excess of caution, please delete it manually. Try `!sheet get drive`.")
+            message = "You have requested to delete a folder " \
+                "within the parent directory. Due to an excess " \
+                "of caution, please delete it manually. Try `!sheet get drive`."
+            await ctx.send(message)
             return
         
         file_id = exists["id"]
@@ -424,9 +430,10 @@ class SheetSet:
     foil = ["foil", "f"]
     sabre = ["sabre", "saber", "s"]
     attendance_sheet_order = ["date", "foil", "sabre", "epee"]
-    inventory_types = ["epee", "e", "foil", "f", "sabre", "saber", "s", "epee bodycord", "ebc",
-                       "foil bodycord", "sabre bodycord", "saber bodycord", "rowbc", "maskcord", "mc"]
-    #rowbc is right of way bodycord.
+    inventory_types = ["epee", "e", "foil", "f", "sabre", "saber", "s",
+                       "epee bodycord", "ebc", "foil bodycord",
+                       "sabre bodycord", "saber bodycord", "rowbc", 
+                       "maskcord", "mc"]
     broken = ["broken", "b"]
     fixed = ["fixed", "fi"]
     
@@ -472,8 +479,9 @@ class SheetSet:
             if text[v].isnumeric():
                 text[v] = int(text[v])
             else:
-                await ctx.send("Bad numeric input. Check to see that the datetime_format you used is"\
-                               " [COUNT WEAPON_NAME]x3")
+                message = "Bad numeric input. Check to see that the datetime_format you used is" \
+                    " [COUNT WEAPON_NAME]x3"
+                await ctx.send()
                 return
 
         #What will eventually be put into the sheet.
@@ -497,7 +505,7 @@ class SheetSet:
                     return
                 write_data[1] = text[w - 1]
             else:
-                message = "Bad weapon entry. Check to see that you spelled everything correctly"\
+                message = "Bad weapon entry. Check to see that you spelled everything correctly" \
                     " and that you put it in the order of [COUNT WEAPON_NAME]"
                 await ctx.send(message)
                 return
@@ -513,9 +521,18 @@ class SheetSet:
         #Google API doesn't populate the returned list with empty cells,
         #hence the initial range pull acting as the write_to_range length
         pull_length = 75 #Well over how many days of practice are in one semester
-        pull_range = "Attendance!A1" + ":A" + str(pull_length)
+
+        pull_range = "Attendance!A1" + \
+            ":A" + \
+            str(pull_length)
+
         retrieved_data = await SheetGet().get_data(ctx, spreadsheet_id, pull_range)
-        write_to_range = "Attendance!A" + str(len(retrieved_data) + 1) + ":E" + str(len(retrieved_data) + 1)
+
+        write_to_range = "Attendance!A" + \
+            str(len(retrieved_data) + 1) + \
+            ":E" + \
+            str(len(retrieved_data) + 1)
+
         write_data[-1] = sum(write_data[1:4])
 
         await self.add_data_single_range(ctx, spreadsheet_id, write_data, write_to_range)
@@ -538,13 +555,16 @@ class SheetSet:
         if count_to_change.isnumeric():
             count_to_change = int(count_to_change)
         else:
-            await ctx.send("Bad command: immediatly after calling inventory, specify the amount of change as "\
-                           "a digit.")
+            message = "Bad command: immediatly after calling inventory, "\
+                "specify the amount of change as a digit."
+            await ctx.send(message)
             return
         
         del text[0]
         type_to_change = text[0]
-        if type_to_change in self.inventory_types and text[1] not in ["body", "bodycord"]:
+
+        if type_to_change in self.inventory_types and \
+           text[1] not in ["body", "bodycord"]:
             del text[0]
         elif text[1] == "bodycord":
             type_to_change = type_to_change + " " + text[1]
@@ -553,26 +573,31 @@ class SheetSet:
             type_to_change = type_to_change + " " + "".join(text[1:3])
             del text[0:3]
         else:
-            await ctx.send("Bad type specification. If entering a weapon, just specify the type,"\
-                           " not the word 'blade'.")
+            message = "Bad type specification. If entering a weapon, "\
+                "just specify the type, not the word 'blade'."
+            await ctx.send(message)
             return
 
         if type_to_change not in self.inventory_types:
-            await ctx.send("Bad type specification. You entered: " + type_to_change + ". Accepted values are: "\
-                           + ", ".join(self.inventory_types))
+            message = "Bad type specification. You entered: " + \
+                type_to_change + ". Accepted values are: " + \
+                ", ".join(self.inventory_types)
+            await ctx.send(message)
             return
 
         if text[0] in self.fixed:
             count_to_change *= -1
         elif text[0] not in self.broken:
-            await ctx.send("Bad specification of whether it is broken or fixed.")
+            message = "Bad specification of whether it is broken or fixed."
+            await ctx.send(message)
             return
 
         del text[0]
 
         exists = SheetUtils.get_file(" ".join(text), drive)
         if exists is None:
-            await ctx.send("The specified sheet does not exist")
+            message = "The specified sheet does not exist"
+            await ctx.send(message)
             return
 
         sheet_row = 1
@@ -624,25 +649,28 @@ class SheetSet:
     async def check_current_semester(self, ctx):
         """
         Checks to see if the correct sheet is being used for data input, based on when the command
-        is called. If the incorrect sheet is being used, the in-use sheet is set to be the current semester/year
-        and a sheet with this name is created if it doesn't already exist.
+        is called. If the incorrect sheet is being used, the in-use sheet is set to be the
+        current semester/year and a sheet with this name is created if it doesn't already exist.
         """
 
         correct_name = SheetBuild().make_fencing_sheet_name(for_semester=True)
         if correct_name != SheetUtils.in_use_sheet:
-            await ctx.send("Looks like you're calling a data-input command into a sheet which does not" \
-                           " correspond to the current semester and/or year. The in-use sheet " +
-                           " will be changed to " + " ".join(correct_name) +
-                           " and a new sheet with that name will be created if one doesn't already exist." \
-                           " You don't have to do anything else.")
+            message = "Looks like you're calling a data-input command into a " \
+                "sheet which does not correspond to the current semester and/or " \
+                "year. The in-use sheet will be changed to " + " ".join(correct_name) + \
+                " and a new sheet with that name will be created if one doesn't " \
+                "already exist.\n\nYou don't have to do anything else."
+            await ctx.send(message)
+
+            #If the call is being made at the start of Fall semester, combine
+            #last years two sheets into one and place all three sheets into a sub-directory.
             if AlphonseUtils.is_fall_semester():
-                await FolderOrganize().combine_semesters(ctx)
+                await OrganizeDrive().combine_semesters(ctx)
             SheetUtils.in_use_sheet = correct_name
             exists = SheetUtils.get_file(" ".join(SheetUtils.in_use_sheet, drive))
             if exists is None:
-                #The list being added to is because build() expects a command and then the keyword
-                #'fencing'
-                await SheetBuild().build(ctx, [""] + ["fencing"] + correct_name)
+                #The list being added to is because build() expects a command.
+                await SheetBuild().build(ctx, [""] + correct_name)
         return correct_name
 
 
@@ -659,13 +687,16 @@ class SheetSet:
         try:
             service = build("sheets", "v4", credentials=credentials)
             service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id, body=body, range=write_to_range, valueInputOption="USER_ENTERED"
+                spreadsheetId=spreadsheet_id, body=body,
+                range=write_to_range, valueInputOption="USER_ENTERED"
             ).execute()
+
             await AlphonseUtils.affirmation(ctx)
         except HttpError as err:
-            await AlphonseUtils.dm_error(ctx, "The data was unabled to be added :: "\
-                                         "SheetSet.add_data_single_range()\n" \
-                                         "The given error is " + str(err) + "\n")
+            message = "The data was unabled to be added :: "\
+                "SheetSet.add_data_single_range()\n" \
+                "The given error is " + str(err) + "\n"
+            await AlphonseUtils.dm_error(ctx, message)
 
 
 #    async def add_data_batch_update(self, ctx, spreadsheet_id, data_values, write_to_range):
@@ -692,7 +723,8 @@ class SheetBuild:
     def make_fencing_sheet_name(self, for_semester):
         """
         for_semester is a bool representing if the name is for one semester or the whole year.
-        The name returned is created accordingly.
+        The name returned is created accordingly. Only used internally, not directly via
+        user commands.
         """
         current_name = str(date.today().year - 1) + "-" + str(date.today().year)
         if for_semester:
@@ -704,27 +736,21 @@ class SheetBuild:
         
     async def build(self, ctx, text):
         """
-        Builds a sheet with the given name. If `fencing` is specified, then the sheet
-        is configured for VTFC use.
+        Builds a sheet with the given name specifically for VTFC use.
+        No inputted name means that the date it was called is used as the sheet name.
         """
 
         del text[0]
 
-        if len(text) == 0 or text[0] != "fencing":
-            new_sheet = await self.make_sheet(ctx, text)
-            await AlphonseUtils.affirmation(ctx)
-            return
-        elif text[0] == "fencing":
-            del text[0]
-            new_sheet = await self.make_sheet(ctx, text)
-            await self.configure_fencing(ctx, new_sheet)
-            return
+        new_sheet = await self.make_sheet(ctx, text)
+        await self.configure_fencing(ctx, new_sheet)
+        return
 
 
     async def make_sheet(self, ctx, text):
         """
-        Makes a sheet via GoogleSheets.api. With no input, the sheet name is the date that it was
-        created.
+        Makes a sheet via GoogleSheets.api. With no specified name,
+        the sheet name is the date that it was created.
         """
         
         title = str(date.today())
@@ -788,8 +814,11 @@ class SheetBuild:
         
         try:
             service = build("sheets", "v4", credentials=credentials)
-            service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body_init).execute()
-            response = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id, body=body_init).execute()
+            
+            response = service.spreadsheets().get(
+                spreadsheetId=spreadsheet_id).execute()
         except HttpError as err:
             await AlphonseUtils.dm_error(ctx)
             return
@@ -811,6 +840,7 @@ class SheetBuild:
                 spreadsheetId=spreadsheet_id, range=init_range_att, body=body_att,
                 valueInputOption="USER_ENTERED"
             ).execute()
+
             service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, range=init_range_inv, body=body_inv,
                 valueInputOption="USER_ENTERED"
