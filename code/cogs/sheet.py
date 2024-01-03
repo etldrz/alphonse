@@ -2,39 +2,19 @@ import discord
 import matplotlib.pyplot as plt
 import os
 import seaborn as sns
+import organize_drive
 from organize_drive import OrganizeDrive
+from organize_drive import PopulateDrive
 import alphonse_utils as AlphonseUtils
-from alphonse_utils import SheetUtils
+from alphonse_utils import SheetUtils()
 from discord.ext import commands
 from datetime import date, datetime
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google.oauth2 import service_account
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.errors import HttpError
 
 
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
-          "https://www.googleapis.com/auth/drive",
-          "https://www.googleapis.com/auth/drive.metadata",
-          "https://www.googleapis.com/auth/drive.file"]
-
-
+drive = organize_drive.drive
 
 
 #leave all command line here, then make new file for additional shit (rearranging, etc)
-
-
-
-
-
-SERVICE_ACCOUNT_FILE = "data/sensitive/alphonse-key.json"
-
-credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-drive = build("drive", "v3", credentials=credentials)
 
 datetime_format = "%Y-%m-%d"
 
@@ -59,6 +39,7 @@ class Sheet(commands.Cog):
         embed.set_image(url="attachment://wisp.jpg")
         await ctx.send(file=file, embed=embed)
 
+        
     @commands.command()
     async def sheet(self, ctx):
         """
@@ -99,9 +80,11 @@ class Sheet(commands.Cog):
             return
         text[0] = "attendance"
         if text[-1] in ["epee", "e", "foil", "f", "sabre", "saber", "s"]:
-            await SheetSet().check_current_semester(ctx)
-            text += SheetUtils.in_use_sheet
-            await ctx.send("Using the in-use sheet: " + " ".join(SheetUtils.in_use_sheet))
+            correct_semester = await SheetSet().check_correct_sheet(ctx)
+            if correct_semester is None:
+                await SheetBuild().build(ctx, [""] + " ".join(SheetUtils().in_use_sheet))
+            text += SheetUtils().in_use_sheet
+            await ctx.send("Using the in-use sheet: " + " ".join(SheetUtils().in_use_sheet))
         await SheetSet().attendance(ctx, text)
 
 
@@ -117,8 +100,8 @@ class Sheet(commands.Cog):
             await ctx.send("Bad command: you need to input data.")
             return
         if text[-1] in ["broken", "b", "fixed", "f"]:
-            text = text + SheetUtils.in_use_sheet
-            await ctx.send("Using the in-use sheet: " + " ".join(SheetUtils.in_use_sheet))
+            text = text + SheetUtils().in_use_sheet
+            await ctx.send("Using the in-use sheet: " + " ".join(SheetUtils().in_use_sheet))
         await SheetSet().inventory(ctx, text)
     
 
@@ -134,8 +117,8 @@ class Sheet(commands.Cog):
         text[0] = "plot"
         data_types = SheetGet.attendance_commands + SheetGet.inventory_commands
         if text[-1] in data_types:
-            text = text + SheetUtils.in_use_sheet
-            await ctx.send("Using the in-use sheet: " + " ".join(SheetUtils.in_use_sheet))
+            text = text + SheetUtils().in_use_sheet
+            await ctx.send("Using the in-use sheet: " + " ".join(SheetUtils().in_use_sheet))
         await SheetGet().plot(ctx, text)
 
 
@@ -188,23 +171,6 @@ class SheetGet:
         await self.embed_file_link(ctx, text)
     
 
-    async def get_data(self, ctx, spreadsheet_id, pull_range, dim = "ROWS"):
-        """
-        Is only good for a single range; if multiple ranges are needed for a single get,
-        consider using batchGet. Will pull by rows unless specified otherwise.
-        googleapi enums for dim: ROWS COLUMNS
-        """
-        try:
-            service = build("sheets", "v4", credentials=credentials)
-            result = service.spreadsheets().values().get(
-                spreadsheetId=spreadsheet_id, range=pull_range, majorDimension=dim
-            ).execute()
-        except HttpError as err:
-            await AlphonseUtils.dm_error(ctx)
-            return
-        data = result.get("values", [])
-        return data
-
 
     async def plot(self, ctx, text):
         """
@@ -238,7 +204,7 @@ class SheetGet:
             await ctx.send("Line plot is not allowed for inventory.")
             return
         
-        exists = SheetUtils.get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text), drive)
         if exists == None:
             await ctx.send("Please specify a valid sheet name.")
             return
@@ -247,11 +213,11 @@ class SheetGet:
         if data_type in self.attendance_commands:
             row_range = "75"
             pull_range = "Attendance!A1:E" + row_range
-            data = await self.get_data(ctx, exists["id"], pull_range, "COLUMNS")
+            data = await PopulateDrive().get_data(ctx, exists["id"], pull_range, "COLUMNS")
         elif data_type in self.inventory_commands:
             row_range = "6"
             pull_range = "Inventory!A1:B" + row_range
-            data = await self.get_data(ctx, exists["id"], pull_range, "ROWS")
+            data = await PopulateDrive().get_data(ctx, exists["id"], pull_range, "ROWS")
         
         loc = "code/data/images/active_plot.png"
         
@@ -329,16 +295,16 @@ class SheetGet:
         """
         
         sheet_list = drive.files().list(
-            q = f"'{SheetUtils.parent}' in parents and trashed=False", orderBy="recency"
+            q = f"'{SheetUtils().parent}' in parents and trashed=False", orderBy="recency"
         ).execute()
 
         message_sheets = "Spreadsheets directly within parent folder:\n"
         message_folders = "Sub-directories:\n"
         for file in sheet_list.get("files", []):
-            if file["mimeType"] == SheetUtils.folder_mimetype:
+            if file["mimeType"] == SheetUtils().folder_mimetype:
                 message_folders += f"- {file['name']}\n"
             else:
-                if file["name"] == " ".join(SheetUtils.in_use_sheet):
+                if file["name"] == " ".join(SheetUtils().in_use_sheet):
                     message_sheets += f"- **{file['name']}**\n"
                 else:
                     message_sheets += f"- {file['name']}\n"
@@ -351,7 +317,7 @@ class SheetGet:
         Sends a link of the named sheet or folder to the chat.
         """
         
-        exists = SheetUtils.get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text), drive)
         if exists == None:
             message = "I'm not seeing the requested sheet/folder." \
                 " It be that you misspelled the request, or that" \
@@ -362,7 +328,7 @@ class SheetGet:
         spreadsheet_id = exists["id"]
         url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
         #This accounts for the what-if of a folder being searched for
-        if exists["mimeType"] == SheetUtils.folder_mimetype: 
+        if exists["mimeType"] == SheetUtils().folder_mimetype: 
             url = "https://drive.google.com/drive/u/0/folders/" + exists["id"]
         embed = discord.Embed()
         embed_image = discord.File("data/images/Google_Sheets_logo.png", filename="sheets_logo.png")
@@ -380,7 +346,7 @@ class SheetGet:
         
         file = discord.File("data/images/oppie_uppies.jpg", filename="oppie_uppies.jpg")
         embed = discord.Embed()
-        embed.url = "https://drive.google.com/drive/u/0/folders/" + SheetUtils.parent
+        embed.url = "https://drive.google.com/drive/u/0/folders/" + SheetUtils().parent
         embed.title = "VTFC Data -- Google Drive"
         embed.set_image(url="attachment://oppie_uppies.jpg")
         await ctx.send(file=file, embed=embed)
@@ -404,12 +370,12 @@ class SheetDelete:
             return
 
         del text[-1]
-        exists = SheetUtils.get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text), drive)
         if exists is None:
             await ctx.send("The file does not exist in the in-use directory.")
             return
 
-        if exists["mimeType"] == SheetUtils.folder_mimetype:
+        if exists["mimeType"] == SheetUtils().folder_mimetype:
             message = "You have requested to delete a folder " \
                 "within the parent directory. Due to an excess " \
                 "of caution, please delete it manually. Try `!sheet get drive`."
@@ -418,7 +384,12 @@ class SheetDelete:
         
         file_id = exists["id"]
         updated_body = {"trashed": True}
-        drive.files().update(fileId=file_id, body=updated_body).execute()
+        try:
+            drive.files().update(fileId=file_id, body=updated_body).execute()
+        except:
+            message = "The file could not be deleted."
+            AlphonseUtils().dm_error(ctx, message)
+            return
         await AlphonseUtils.affirmation(ctx)
 
 
@@ -449,7 +420,7 @@ class SheetSet:
             await ctx.send("Please specify what you would like to set.")
             return
 
-        if text[0] == SheetUtils.user_keyword_in_use_sheet:
+        if text[0] == SheetUtils().user_keyword_in_use_sheet:
             await self.set_in_use_sheet(ctx, text)
             return
         elif text[0] in self.attendance_commands:
@@ -512,7 +483,7 @@ class SheetSet:
 
         del text[0:6]
         name = " ".join(text)
-        exists = SheetUtils.get_file(name, drive)
+        exists = SheetUtils().get_file(name, drive)
         if exists is None:
             await ctx.send("Bad sheet name.")
             return
@@ -526,7 +497,7 @@ class SheetSet:
             ":A" + \
             str(pull_length)
 
-        retrieved_data = await SheetGet().get_data(ctx, spreadsheet_id, pull_range)
+        retrieved_data = await PopulateDrive().get_data(ctx, spreadsheet_id, pull_range)
 
         write_to_range = "Attendance!A" + \
             str(len(retrieved_data) + 1) + \
@@ -535,7 +506,7 @@ class SheetSet:
 
         write_data[-1] = sum(write_data[1:4])
 
-        await self.add_data_single_range(ctx, spreadsheet_id, write_data, write_to_range)
+        await PopulateDrive().add_data_single_range(ctx, spreadsheet_id, write_data, write_to_range)
 
 
     async def inventory(self, ctx, text):
@@ -594,7 +565,7 @@ class SheetSet:
 
         del text[0]
 
-        exists = SheetUtils.get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text), drive)
         if exists is None:
             message = "The specified sheet does not exist"
             await ctx.send(message)
@@ -615,7 +586,7 @@ class SheetSet:
         
         write_to_range = "Inventory!B" + str(sheet_row) + ":B" + str(sheet_row)
 
-        old_data = await SheetGet().get_data(ctx, spreadsheet_id, sheet_range)
+        old_data = await PopulateDrive().get_data(ctx, spreadsheet_id, sheet_range)
 
         new_data = None
         if len(old_data) == 0:
@@ -626,7 +597,7 @@ class SheetSet:
         if new_data < 0:
             new_data == 0
 
-        self.add_data_single_range(spreadsheet_id, new_data, write_to_range)
+        PopulateDrive().add_data_single_range(spreadsheet_id, new_data, write_to_range)
 
 
     async def set_in_use_sheet(self, ctx, text):
@@ -635,105 +606,20 @@ class SheetSet:
             await ctx.send("Please specify the name of a sheet you would like to set as in-use.")
             return
 
-        exists = SheetUtils.get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text), drive)
         if exists is None:
             await ctx.send("There is no sheet by that name within the directory.")
             return
-        elif exists["mimeType"] == SheetUtils.folder_mimetype:
+        elif exists["mimeType"] == SheetUtils().folder_mimetype:
             await ctx.send("You cannot select a folder to be the in-use sheet.")
             return
-        SheetUtils.in_use_sheet = exists["name"].split(" ")
+        SheetUtils().in_use_sheet = exists["name"].split(" ")
         await AlphonseUtils.affirmation(ctx)
 
 
-    async def check_current_semester(self, ctx):
-        """
-        Checks to see if the correct sheet is being used for data input, based on when the command
-        is called. If the incorrect sheet is being used, the in-use sheet is set to be the
-        current semester/year and a sheet with this name is created if it doesn't already exist.
-        """
-
-        correct_name = SheetBuild().make_fencing_sheet_name(for_semester=True)
-        if correct_name != SheetUtils.in_use_sheet:
-            message = "Looks like you're calling a data-input command into a " \
-                "sheet which does not correspond to the current semester and/or " \
-                "year. The in-use sheet will be changed to " + " ".join(correct_name) + \
-                " and a new sheet with that name will be created if one doesn't " \
-                "already exist.\n\nYou don't have to do anything else."
-            await ctx.send(message)
-
-            #If the call is being made at the start of Fall semester, combine
-            #last years two sheets into one and place all three sheets into a sub-directory.
-            if AlphonseUtils.is_fall_semester():
-                await OrganizeDrive().combine_semesters(ctx)
-            SheetUtils.in_use_sheet = correct_name
-            exists = SheetUtils.get_file(" ".join(SheetUtils.in_use_sheet, drive))
-            if exists is None:
-                #The list being added to is because build() expects a command.
-                await SheetBuild().build(ctx, [""] + correct_name)
-        return correct_name
-
-
-    async def add_data_single_range(self, ctx, spreadsheet_id, data_values, write_to_range):
-        """
-        Writes the inputted data to the inputted range on the inputted sheet.
-        """
-        body = {
-            "values": [
-                data_values
-            ]
-        }
-
-        try:
-            service = build("sheets", "v4", credentials=credentials)
-            service.spreadsheets().values().update(
-                spreadsheetId=spreadsheet_id, body=body,
-                range=write_to_range, valueInputOption="USER_ENTERED"
-            ).execute()
-
-            await AlphonseUtils.affirmation(ctx)
-        except HttpError as err:
-            message = "The data was unabled to be added :: "\
-                "SheetSet.add_data_single_range()\n" \
-                "The given error is " + str(err) + "\n"
-            await AlphonseUtils.dm_error(ctx, message)
-
-
-#    async def add_data_batch_update(self, ctx, spreadsheet_id, data_values, write_to_range):
-#        body = {
-#            "requests":[
-#                {
-#                    "insertDimension": {
-#                        "range": {
-#                            "sheetId": spreadsheet_id,
-#                            "dimension": dim,
-#                            "startIndex": start_index,
-#                            "endIndex": end_index
-#                        },
-#                        "inheritFromBefore": True:
-#                    }
-#                }
-#            ]
-#        }
-         
-
 class SheetBuild:
-
-
-    def make_fencing_sheet_name(self, for_semester):
-        """
-        for_semester is a bool representing if the name is for one semester or the whole year.
-        The name returned is created accordingly. Only used internally, not directly via
-        user commands.
-        """
-        current_name = str(date.today().year - 1) + "-" + str(date.today().year)
-        if for_semester:
-            current_name = SheetUtils.semester_fall if AlphonseUtils.is_fall_semester() \
-                else SheetUtils.semester_spring
-            current_name += " " + str(date.today().year)
-        return current_name.split(" ")
         
-        
+
     async def build(self, ctx, text):
         """
         Builds a sheet with the given name specifically for VTFC use.
@@ -757,7 +643,7 @@ class SheetBuild:
         if len(text) > 0:
             title = " ".join(text)
 
-        exists = SheetUtils.get_file(title, drive)
+        exists = SheetUtils().get_file(title, drive)
         if exists != None:
             message = "The specified filename already exists. Try using the command " \
                 "`!sheet get list` or choosing a different filename."
@@ -766,17 +652,15 @@ class SheetBuild:
 
         file_metadata = {
             "name": title,
-            "parents": [SheetUtils.parent],
+            "parents": [SheetUtils().parent],
             "mimeType": "application/vnd.google-apps.spreadsheet",
         }
 
         try:
-            service = build("sheets", "v4", credentials=credentials)
             new_sheet = drive.files().create(body=file_metadata).execute()
             return new_sheet
         except HttpError as err:
             await AlphonseUtils.dm_error(ctx)
-            return
 
 
     async def configure_fencing(self, ctx, new_sheet):
