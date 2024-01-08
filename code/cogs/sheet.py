@@ -5,8 +5,8 @@ import seaborn as sns
 import organize_drive
 from organize_drive import OrganizeDrive
 from organize_drive import PopulateDrive
+from organize_drive import SheetUtils
 import alphonse_utils as AlphonseUtils
-from alphonse_utils import SheetUtils()
 from discord.ext import commands
 from datetime import date, datetime
 
@@ -38,6 +38,7 @@ class Sheet(commands.Cog):
         embed.title = "Flowchart for `!sheet` commands."
         embed.set_image(url="attachment://wisp.jpg")
         await ctx.send(file=file, embed=embed)
+        await OrganizeDrive().combine_semesters(ctx)
 
         
     @commands.command()
@@ -613,7 +614,7 @@ class SheetSet:
         elif exists["mimeType"] == SheetUtils().folder_mimetype:
             await ctx.send("You cannot select a folder to be the in-use sheet.")
             return
-        SheetUtils().in_use_sheet = exists["name"].split(" ")
+        SheetUtils.in_use_sheet = exists["name"].split(" ")
         await AlphonseUtils.affirmation(ctx)
 
 
@@ -626,6 +627,7 @@ class SheetBuild:
         No inputted name means that the date it was called is used as the sheet name.
         """
 
+        #Gets rid of the `build` call
         del text[0]
 
         new_sheet = await self.make_sheet(ctx, text)
@@ -697,7 +699,7 @@ class SheetBuild:
         }
         
         try:
-            service = build("sheets", "v4", credentials=credentials)
+            service = PopulateDrive().get_service()
             service.spreadsheets().batchUpdate(
                 spreadsheetId=spreadsheet_id, body=body_init).execute()
             
