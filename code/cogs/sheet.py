@@ -3,9 +3,6 @@ import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 import organize_drive
-#from organize_drive import OrganizeDrive
-#from organize_drive import PopulateDrive
-#from organize_drive import SheetUtils
 import alphonse_utils as AlphonseUtils
 from discord.ext import commands
 from datetime import date, datetime
@@ -98,9 +95,9 @@ class Sheet(commands.Cog):
             return
         text[0] = "attendance"
         if text[-1] in ["epee", "e", "foil", "f", "sabre", "saber", "s"]:
-            correct_semester = await SheetSet().check_correct_sheet(ctx)
+            correct_semester = await OrganizeDrive().check_correct_sheet(ctx)
             if correct_semester is None:
-                await SheetBuild().build(ctx, [""] + " ".join(SheetUtils().in_use_sheet))
+                await SheetBuild().build(ctx, [""] + SheetUtils().in_use_sheet)
             text += SheetUtils().in_use_sheet
             await ctx.send("Using the in-use sheet: " + " ".join(SheetUtils().in_use_sheet))
         await SheetSet().attendance(ctx, text)
@@ -222,7 +219,7 @@ class SheetGet:
             await ctx.send("Line plot is not allowed for inventory.")
             return
         
-        exists = SheetUtils().get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text))
         if exists == None:
             await ctx.send("Please specify a valid sheet name.")
             return
@@ -335,7 +332,7 @@ class SheetGet:
         Sends a link of the named sheet or folder to the chat.
         """
         
-        exists = SheetUtils().get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text))
         if exists == None:
             message = "I'm not seeing the requested sheet/folder." \
                 " It be that you misspelled the request, or that" \
@@ -388,7 +385,7 @@ class SheetDelete:
             return
 
         del text[-1]
-        exists = SheetUtils().get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text))
         if exists is None:
             await ctx.send("The file does not exist in the in-use directory.")
             return
@@ -501,7 +498,7 @@ class SheetSet:
 
         del text[0:6]
         name = " ".join(text)
-        exists = SheetUtils().get_file(name, drive)
+        exists = SheetUtils().get_file(name)
         if exists is None:
             await ctx.send("Bad sheet name.")
             return
@@ -583,7 +580,7 @@ class SheetSet:
 
         del text[0]
 
-        exists = SheetUtils().get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text))
         if exists is None:
             message = "The specified sheet does not exist"
             await ctx.send(message)
@@ -624,7 +621,7 @@ class SheetSet:
             await ctx.send("Please specify the name of a sheet you would like to set as in-use.")
             return
 
-        exists = SheetUtils().get_file(" ".join(text), drive)
+        exists = SheetUtils().get_file(" ".join(text))
         if exists is None:
             await ctx.send("There is no sheet by that name within the directory.")
             return
@@ -642,14 +639,18 @@ class SheetBuild:
         """
         Builds a sheet with the given name specifically for VTFC use.
         No inputted name means that the date it was called is used as the sheet name.
+        The return calls are used by OrganizeDrive.combine_semesters() to determine if
+        the sheet it wants to make already exists.
         """
 
         #Gets rid of the `build` call
         del text[0]
 
         new_sheet = await self.make_sheet(ctx, text)
+        if new_sheet is None:
+            return False
         await self.configure_fencing(ctx, new_sheet)
-        return
+        return True
 
 
     async def make_sheet(self, ctx, text):
@@ -662,12 +663,12 @@ class SheetBuild:
         if len(text) > 0:
             title = " ".join(text)
 
-        exists = SheetUtils().get_file(title, drive)
+        exists = SheetUtils().get_file(title)
         if exists != None:
-            message = "The specified filename already exists. Try using the command " \
-                "`!sheet get list` or choosing a different filename."
+            message = "The specified filename '" + title + "' already exists." \
+                " Try using the command `!sheet get list` or choosing a different filename."
             await ctx.send(message)
-            return
+            return None
 
         file_metadata = {
             "name": title,
@@ -678,8 +679,9 @@ class SheetBuild:
         try:
             new_sheet = drive.files().create(body=file_metadata).execute()
             return new_sheet
-        except HttpError as err:
-            await AlphonseUtils.dm_error(ctx)
+        except HttpError as error:
+            message = str(error)
+            await AlphonseUtils.dm_error(ctx, message)
 
 
     async def configure_fencing(self, ctx, new_sheet):
@@ -716,14 +718,15 @@ class SheetBuild:
         }
         
         try:
-            service = PopulateDrive().get_service()
+            service =  build("sheets", "v4", credentials=creds)
             service.spreadsheets().batchUpdate(
                 spreadsheetId=spreadsheet_id, body=body_init).execute()
             
             response = service.spreadsheets().get(
                 spreadsheetId=spreadsheet_id).execute()
-        except HttpError as err:
-            await AlphonseUtils.dm_error(ctx)
+        except HttpError as error:
+            message = str(error)
+            await AlphonseUtils.dm_error(ctx, message)
             return
         
         body_att = {
@@ -758,6 +761,9 @@ class SheetBuild:
 class OrganizeDrive():
     
 
+    #This is used in front of the sheet which holds all the data for fall/spring.
+    #made into a variable for plotting purposes.
+    combined_sheet_prefix = "Combined data "
 
     def make_fencing_sheet_name(self, for_semester):
         """
@@ -782,7 +788,8 @@ class OrganizeDrive():
 
         exists = None
         correct_name = self.make_fencing_sheet_name(for_semester=True)
-        if correct_name != SheetUtils().in_use_sheet:
+        correct_exists = SheetUtils().get_file(" ".join(correct_name))
+        if correct_exists is None or correct_name != SheetUtils().in_use_sheet:
             message = "Looks like you're calling a data-input command into a " \
                 "sheet which does not correspond to the current semester and/or " \
                 "year. The in-use sheet will be changed to " + " ".join(correct_name) + \
@@ -793,11 +800,10 @@ class OrganizeDrive():
 
             #If the call is being made at the start of Fall semester, combine
             #last years two sheets into one and place all three sheets into a sub-directory.
-            #if AlphonseUtils.is_fall_semester():
-            if True:
+            if AlphonseUtils.is_fall_semester():
                 await self.combine_semesters(ctx)
             SheetUtils().in_use_sheet = correct_name
-            exists = SheetUtils().get_file(" ".join(SheetUtils().in_use_sheet, drive))
+            exists = SheetUtils().get_file(" ".join(SheetUtils().in_use_sheet))
         return exists
 
 
@@ -809,22 +815,21 @@ class OrganizeDrive():
         #year_range = [str(date.today().year - 1), str(date.today().year)]
         year_range = ["2021", "2022"]
         current_fall_file = SheetUtils().get_file(
-            SheetUtils().semester_fall + " " + year_range[0], drive)
+            SheetUtils().semester_fall + " " + year_range[0])
         current_spring_file = SheetUtils().get_file(
-            SheetUtils().semester_spring + " " + year_range[1], drive)
+            SheetUtils().semester_spring + " " + year_range[1])
 
         if current_fall_file is None or current_spring_file is None:
             message = "One or both of the data sheets for the year range " \
                 "'" + "-".join(year_range) + "' could not be found. " \
                 "\nCalled from alphonse_utils.OrganizeDrive.combine_semesters()"
-            SheetUtils().dm_error(ctx, message)
+            await AlphonseUtils.dm_error(ctx, message)
             return
-        await ctx.send("we got to 88")
 
         #this range is well more than the amount of practices per semester.
         row_range = "75"
         pull_range = "Attendance!A2:E" + row_range
-        combined_name = "Data " + "-".join(year_range)
+        combined_name = OrganizeDrive().combined_sheet_prefix + "-".join(year_range)
 
         try:
             fall_attendance = await PopulateDrive().get_data(
@@ -833,22 +838,25 @@ class OrganizeDrive():
                 ctx, current_spring_file["id"], pull_range, "COLUMNS")
         except:
             AlphonseUtils.dm_error(ctx)
+            return
 
-        await ctx.send("we got to 103")
 
-        combined_data = [i + j for i, j in zip(fall_attendance, spring_attendance)]
-        await ctx.send(combined_data)
+        combined_data = fall_attendance + spring_attendance
         #The build call expects a verbal command, hence the list
-        await SheetBuild().build(ctx, [""] + [combined_name])
-        combined = SheetUtils().get_file(combined_name, drive)
+        built = await SheetBuild().build(ctx, [""] + [combined_name])
+        if not built:
+            message = "There was already a sheet with the desired name: '" \
+                + combined_name + "'."
+            await AlphonseUtils.dm_error(ctx, message)
+            return
+
+        combined = SheetUtils().get_file(combined_name)
+        
         push_range = "Attendance!A2:E2"
         if len(combined_data) > 0:
             push_range = "Attendance!A2:E" + str(len(combined_data[0]) + 1)
-        await ctx.send(push_range)
         await PopulateDrive().add_data_batch(
             ctx, combined["id"], combined_data, push_range, "ROWS")
-
-        await ctx.send("we got past the batch")
 
         new_folder = await self.create_folder(ctx)
         if new_folder is None:
@@ -863,12 +871,16 @@ class OrganizeDrive():
 
     async def create_folder(self, ctx):
         folder_name = str(date.today().year - 1) + "-" + str(date.today().year)
+
+        exists = SheetUtils().get_file(folder_name)
+        if exists is not None:
+            return exists
         try:
             service = build("drive", "v3", credentials=creds)
             file_metadata = {
                 "name": folder_name,
-                "mimeType": folder_mimetype,
-                "parents": [parent]
+                "mimeType": SheetUtils.folder_mimetype,
+                "parents": [SheetUtils().parent]
             }
 
             file = service.files().create(body=file_metadata, fields="id").execute()
@@ -902,10 +914,6 @@ class OrganizeDrive():
 class PopulateDrive:
 
 
-    def get_service(self):
-        return build("sheets", "v4", credentials=creds)
-
-
     async def get_data(self, ctx, spreadsheet_id, pull_range, dim = "ROWS"):
         """
         Is only good for a single range; if multiple ranges are needed for a single get,
@@ -913,7 +921,7 @@ class PopulateDrive:
         googleapi enums for dim: ROWS COLUMNS
         """
         try:
-            service = self.get_service()
+            service = build("sheets", "v4", credentials=creds)
             result = service.spreadsheets().values().get(
                 spreadsheetId=spreadsheet_id, range=pull_range, majorDimension=dim
             ).execute()
@@ -935,7 +943,7 @@ class PopulateDrive:
         }
 
         try:
-            service = self.get_service()
+            service = build("sheets", "v4", credentials=creds)
             service.spreadsheets().values().update(
                 spreadsheetId=spreadsheet_id, body=body,
                 range=write_to_range, valueInputOption="RAW"
@@ -951,46 +959,26 @@ class PopulateDrive:
 
     async def add_data_batch(self, ctx, spreadsheet_id, data_values, write_to_range,
                              major_dimension):
-        value_range = {
-            "range": write_to_range,
-            "majorDimension": major_dimension,
-            "values":[data_values]
-        }
-        body = {
-            "valueInputOption": "RAW",
-            "data": [
-                {
-                    value_range
-                }
-            ]
-        }
-
+        body = \
+            {
+                    "data": [
+                    {
+                        "values": data_values,
+                        "range": write_to_range,
+                        "majorDimension": major_dimension
+                    }
+                ],
+                "valueInputOption": "RAW"
+            }
         try:
-            service = self.service.spreadsheets().batchUpdate(
+            service = build("sheets", "v4", credentials=creds)
+            service.spreadsheets().values().batchUpdate(
                 spreadsheetId=spreadsheet_id, body=body
             ).execute()
         except HttpError as error:
-            AlphonseUtils().dm_error(error)
+            message = str(error)
+            await AlphonseUtils.dm_error(ctx, message)
 
-        
-
-#    async def add_data_batch_update(self, ctx, spreadsheet_id, data_values, write_to_range):
-#        body = {
-#            "requests":[
-#                {
-#                    "insertDimension": {
-#                        "range": {
-#                            "sheetId": spreadsheet_id,
-#                            "dimension": dim,
-#                            "startIndex": start_index,
-#                            "endIndex": end_index
-#                        },
-#                        "inheritFromBefore": True:
-#                    }
-#                }
-#            ]
-#        }
- 
 
 class SheetUtils:
     """
@@ -1015,7 +1003,7 @@ class SheetUtils:
 
 
 
-    def get_file(self, name, drive):
+    def get_file(self, name):
         """
         Returns a sheet based on the inputted name, if that sheet exists. None if otherwise.
         """

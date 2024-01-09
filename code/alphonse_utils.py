@@ -35,7 +35,7 @@ async def affirmation(ctx):
 
 
 async def dm_error(ctx, message="uh oh"):
-    message += " via user call: '" + ctx.message.content + "'"
+    message += "\n\nCalled via user command: '" + ctx.message.content + "'"
     me = await get_member(ctx, str(personal_id))
     await me.send(message)
 
