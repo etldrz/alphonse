@@ -812,8 +812,7 @@ class OrganizeDrive():
         Only works for attendance right now.
         """
 
-        #year_range = [str(date.today().year - 1), str(date.today().year)]
-        year_range = ["2021", "2022"]
+        year_range = [str(date.today().year - 1), str(date.today().year)]
         current_fall_file = SheetUtils().get_file(
             SheetUtils().semester_fall + " " + year_range[0])
         current_spring_file = SheetUtils().get_file(
