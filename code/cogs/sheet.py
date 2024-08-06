@@ -14,7 +14,6 @@ from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.errors import HttpError
 
-
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
           "https://www.googleapis.com/auth/drive",
           "https://www.googleapis.com/auth/drive.metadata",
@@ -201,7 +200,8 @@ class SheetGet:
            and plot_type not in self.plot_bar \
            and plot_type not in self.plot_line:
             await ctx.send("Please specify PLOT_TYPE more better. Allowed responses are '"\
-                           + ", ".join(self.plot_pie) + "' and '" + ", ".join(self.plot_bar) + "'.")
+                           + ", ".join(self.plot_pie) + "', " + ", ".join(self.plot_line) + "or '" + \
+                           ", ".join(self.plot_bar) + "'.")
             return
         del text[0]
 
@@ -234,7 +234,7 @@ class SheetGet:
             pull_range = "Inventory!A1:B" + row_range
             data = await PopulateDrive().get_data(ctx, exists["id"], pull_range, "ROWS")
         
-        loc = "code/data/images/active_plot.png"
+        loc = "data/images/active_plot.png"
         
         if plot_type in self.plot_pie:
             types = [i.pop(0) for i in data]            
@@ -349,7 +349,7 @@ class SheetGet:
         embed_image = discord.File("data/images/Google_Sheets_logo.png", filename="sheets_logo.png")
         embed.url = url
         embed.title = exists["name"]
-        embed.description = "The requested item."
+        embed.description = "Here you go"
         embed.set_image(url="attachment://sheets_logo.png")
         await ctx.send(embed=embed, file=embed_image)
 
@@ -791,8 +791,9 @@ class OrganizeDrive():
         correct_exists = SheetUtils().get_file(" ".join(correct_name))
         if correct_exists is None or correct_name != SheetUtils().in_use_sheet:
             message = "Looks like you're calling a data-input command into a " \
-                "sheet which does not correspond to the current semester and/or " \
-                "year. The in-use sheet will be changed to " + " ".join(correct_name) + \
+                "sheet which either does not exist or doesn't  correspond " \
+                "to the current semester and/or year. The in-use sheet " \
+                "will be set to " + " ".join(correct_name) + \
                 " and a new sheet with that name will be created if one doesn't " \
                 "already exist.\n\nYou don't have to do anything else. If you wish to " \
                 "bypass this assumption, use the full command: `!sheet set attendance VALUES`."
@@ -802,7 +803,7 @@ class OrganizeDrive():
             #last years two sheets into one and place all three sheets into a sub-directory.
             if AlphonseUtils.is_fall_semester():
                 await self.combine_semesters(ctx)
-            SheetUtils().in_use_sheet = correct_name
+            SheetUtils.in_use_sheet = correct_name
             exists = SheetUtils().get_file(" ".join(SheetUtils().in_use_sheet))
         return exists
 
